@@ -950,7 +950,7 @@ function critStats(homes, hostName){
   const sucCnt=k=>mine.filter(h=>(h.kind||"Home")===k&&isSuccessHome(h)).length;
   const guest=mine.reduce((n,h)=>n+(h.result_g||0),0);
   const reg=mine.reduce((n,h)=>n+(h.result_r||0),0);
-  const orgSuccess=mine.filter(h=>(h.kind||"Home")!=="Call Out"&&isSuccessHome(h)).length;
+  const orgSuccess=mine.filter(h=>(h.kind||"Home")==="Home"&&isSuccessHome(h)).length;
   const c1=orgSuccess>=CRIT_ORG, c2=guest>=CRIT_GUEST, c3=reg>=CRIT_REG;
   return { name:hostName, total:mine.length, home:cnt("Home"), homeSuccess:sucCnt("Home"),
     event:cnt("Event"), eventSuccess:sucCnt("Event"), call:cnt("Call Out"),
@@ -973,7 +973,7 @@ function CriteriaPanel({s}){
       <h3 style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
         <span style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.trophy} size={18}/>เกณฑ์การคัดเลือก (Leadership)</span>
         <span className={"cstatus"+(s.passed===3?" done":"")}>{s.passed===3?"ผ่านครบ 3/3 ✓":"ผ่าน "+s.passed+"/3"}</span></h3>
-      <p className="lead">Home/Event สำเร็จ = มี Guest ≥ {MIN_GUEST} คน และลงทะเบียน ≥ 25% ของ Guest</p>
+      <p className="lead">Home สำเร็จ = มี Guest ≥ {MIN_GUEST} คน และลงทะเบียน ≥ 25% ของ Guest</p>
       <div className="profile" style={{marginBottom:16}}>
         <div className="pbox"><div className="pv">{s.home}</div><div className="pl">Home ทั้งหมด · สำเร็จ {s.homeSuccess}</div></div>
         <div className="pbox"><div className="pv">{s.event}</div><div className="pl">Event · สำเร็จ {s.eventSuccess}</div></div>
@@ -982,7 +982,7 @@ function CriteriaPanel({s}){
         <div className="pbox"><div className="pv">{s.reg}</div><div className="pl">ลงทะเบียนรวม</div></div>
       </div>
       <div className="critgrid">
-        <CritItem label="จัดงานสำเร็จ (Home/Event)" icon={I.trophy} cur={s.orgSuccess} goal={CRIT_ORG} unit="ครั้ง" met={s.c1}/>
+        <CritItem label="จัด Home สำเร็จ" icon={I.trophy} cur={s.orgSuccess} goal={CRIT_ORG} unit="ครั้ง" met={s.c1}/>
         <CritItem label="Guest มาทั้งหมด" icon={I.users} cur={s.guest} goal={CRIT_GUEST} unit="คน" met={s.c2}/>
         <CritItem label="ลงทะเบียน (ทุกช่องทาง)" icon={I.flag} cur={s.reg} goal={CRIT_REG} unit="คน" met={s.c3}/>
       </div>
@@ -1076,7 +1076,7 @@ function DashboardView({homes, signups}){
         <h3 style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
           <span style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.trophy} size={18}/>การผ่านเกณฑ์ของแต่ละคน</span>
           <span className="cstatus done">ผ่านครบแล้ว {qualified} คน</span></h3>
-        <p className="lead">เกณฑ์: จัดงานสำเร็จ ≥ {CRIT_ORG} · Guest ≥ {CRIT_GUEST} · ลงทะเบียน ≥ {CRIT_REG} (Home/Event สำเร็จ = Guest ≥ {MIN_GUEST} & ลงทะเบียน ≥ 25%)</p>
+        <p className="lead">เกณฑ์: จัด Home สำเร็จ ≥ {CRIT_ORG} · Guest ≥ {CRIT_GUEST} · ลงทะเบียน ≥ {CRIT_REG} (Home สำเร็จ = Guest ≥ {MIN_GUEST} & ลงทะเบียน ≥ 25%)</p>
         {critList.length===0 ? <div className="empty-assist">ยังไม่มีข้อมูล</div> :
           <div className="lead-list">{critList.map(s=>(
             <div className="lead-row" key={s.name}>
