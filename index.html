@@ -248,8 +248,8 @@
 const { useState, useEffect, useRef, useCallback } = React;
 
 /* ===== CONFIG ===== */
-const HARDCODED_URL = "";
-const HARDCODED_KEY = "";
+const HARDCODED_URL = "https://ocymuiaifmvfqytutuvu.supabase.co";
+const HARDCODED_KEY = "sb_publishable_4qFzD9M_-zx5787fkRi8Yw_D_7vce7o";
 function loadCfg(){ if(HARDCODED_URL&&HARDCODED_KEY) return {url:HARDCODED_URL,key:HARDCODED_KEY};
   try{const c=JSON.parse(localStorage.getItem("ilp69_cfg")||"null"); if(c&&c.url&&c.key) return c;}catch(e){} return null; }
 function saveCfg(u,k){ localStorage.setItem("ilp69_cfg",JSON.stringify({url:u.trim(),key:k.trim()})); }
