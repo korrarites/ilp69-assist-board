@@ -109,6 +109,10 @@
   .cpill.ok{background:var(--green-tint);color:var(--green-deep);border-color:#CDE6DD}
   .cstatus{font-family:"Bai Jamjuree";font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--paper-2);color:var(--muted);white-space:nowrap}
   .cstatus.done{background:#0E211C;color:#D9EDE6}
+  .grpdiv{font-family:"Bai Jamjuree";font-weight:700;font-size:12px;color:var(--green-deep);letter-spacing:.04em;padding:14px 6px 6px;border-bottom:2px solid var(--green-tint);margin-bottom:2px}
+  .lead-row.click{cursor:pointer;border-radius:9px;padding-left:8px;padding-right:8px}
+  .lead-row.click:hover{background:var(--paper-2)}
+  .lead-row.sel{background:var(--green-tint)}
   .host{display:inline-flex;align-items:center;gap:7px;margin-top:11px;font-size:13px}
   .host .lbl{color:var(--muted)}
   .ava{width:24px;height:24px;border-radius:50%;background:var(--green-tint);color:var(--green-deep);display:grid;place-items:center;font-weight:700;font-size:11px;font-family:"Bai Jamjuree"}
@@ -1072,68 +1076,95 @@ function DashboardView({homes, signups}){
           <div className="s">จบแล้ว {cGR.done} · <b>{cGR.g}</b> Guest · <b>{cGR.r}</b> Reg</div></div>
       </div>
 
-      <div className="panel">
-        <h3 style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
-          <span style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.trophy} size={18}/>การผ่านเกณฑ์ของแต่ละคน</span>
-          <span className="cstatus done">ผ่านครบแล้ว {qualified} คน</span></h3>
-        <p className="lead">เกณฑ์: จัด Home สำเร็จ ≥ {CRIT_ORG} · Guest ≥ {CRIT_GUEST} · ลงทะเบียน ≥ {CRIT_REG} (Home สำเร็จ = Guest ≥ {MIN_GUEST} & ลงทะเบียน ≥ 25%)</p>
-        {critList.length===0 ? <div className="empty-assist">ยังไม่มีข้อมูล</div> :
-          <div className="lead-list">{critList.map(s=>(
-            <div className="lead-row" key={s.name}>
-              <span className="ava" style={{flex:"0 0 auto"}}>{initials(s.name)}</span>
-              <div style={{flex:1,minWidth:0}}>
-                <div className="lead-name">{s.name}</div>
-                <div className="lead-sub">Home {s.home} · Event {s.event} · Call Out {s.call}</div></div>
-              <span className={"cpill"+(s.c1?" ok":"")}>จัด {s.orgSuccess}/{CRIT_ORG}</span>
-              <span className={"cpill"+(s.c2?" ok":"")}>G {s.guest}/{CRIT_GUEST}</span>
-              <span className={"cpill"+(s.c3?" ok":"")}>R {s.reg}/{CRIT_REG}</span>
-              <span className={"cstatus"+(s.passed===3?" done":"")}>{s.passed===3?"ผ่าน ✓":s.passed+"/3"}</span>
-            </div>))}
-          </div>}
-      </div>
-
-      <div className="panel" style={{padding:18,marginBottom:18}}>
-        <div className="hostpick"><div className="field"><label><SVG d={I.search} size={13}/> ดูสถิติรายบุคคล — เลือก/พิมพ์ชื่อ</label>
-          <input className="inp" list="dashnames" value={q} placeholder="เช่น เป้ 69 หรือ วัฒน์" onChange={e=>setQ(e.target.value)} />
-          <datalist id="dashnames">{allNames.map(n=><option key={n} value={n}/>)}</datalist></div>
-          {q && <button className="btn btn-sm" style={{alignSelf:"flex-end"}} onClick={()=>setQ("")}>ล้าง</button>}
-        </div>
-        {sel && !pHost && !pAssist && <div className="empty-assist" style={{textAlign:"left",paddingTop:12}}>ไม่พบสถิติของ “{sel}” — ลองเลือกชื่อจากรายการ</div>}
-        {(pHost||pAssist) && <div style={{marginTop:16}}>
-          <div className="phead"><span className="ava">{initials(sel)}</span>
-            <div><h3>{sel}</h3><div className="role">
-              {pHost?("ผู้จัด Home "+pHost.homes+" งาน"):"ยังไม่เคยจัด Home"}
-              {" · "}{pAssist?("ช่วยงาน "+pAssist.count+" ครั้ง"):"ยังไม่เคยลงชื่อช่วย"}</div></div></div>
-          <div className="profile">
-            <div className="pbox"><div className="pv">{pHost?pHost.homes:0}</div><div className="pl">จัด Home (ครั้ง)</div></div>
-            <div className="pbox"><div className="pv">{pHost?pHost.g:0}</div><div className="pl">Guest รวม</div></div>
-            <div className="pbox"><div className="pv">{pHost?pHost.r:0}</div><div className="pl">Register รวม</div></div>
-            <div className="pbox"><div className="pv">{pAssist?pAssist.count:0}</div><div className="pl">Assist (ครั้ง)</div></div>
-          </div>
-          {pHost && pHost.list.length>0 && <div style={{marginTop:16}}>
-            <div className="lead-sub" style={{marginBottom:6,fontWeight:600}}>งาน Home ที่จัด</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-              {pHost.list.slice().sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")).map(h=>{
-                const {day,mo}=fmtDate(h.event_date);
-                return <span className="tagperson" key={h.id}><SVG d={I.cal} size={13}/>{day} {mo}{h.completed?" · "+resultText(h):" · รอจัด"}</span>; })}
-            </div></div>}
-          {helped.length>0 && <div style={{marginTop:16}}>
-            <div className="lead-sub" style={{marginBottom:6,fontWeight:600}}>เคยไปช่วยงานของ</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-              {helped.map((h,i)=>{ const {day,mo}=fmtDate(h.event_date);
-                return <span className="tagperson" key={h.id+"_"+i}><span className="ava" style={{width:22,height:22}}>{initials(h.host_name)}</span>{h.host_name} · {day} {mo}</span>; })}
-            </div></div>}
-        </div>}
-      </div>
-
-      {pHost && <CriteriaPanel s={critStats(homes, sel)} />}
-
       <div className="dash-cols">
         <StatLeaders title="จัด Home มากสุด" icon={I.trophy} rows={hostLeaders} unit="งาน" />
         <StatLeaders title="Assist มากสุด" icon={I.star} rows={assistLeaders} unit="ครั้ง" accent="amber" />
       </div>
       <div style={{marginTop:18}}>
         <StatLeaders title="ทำ Guest ได้มากสุด (ต่อผู้จัด)" icon={I.users} rows={guestLeaders} unit="คน" />
+      </div>
+    </div>
+  );
+}
+
+/* ===== เกณฑ์รายคน + สถิติรายบุคคล (แท็บแยก) ===== */
+function CriteriaView({homes, signups}){
+  const [q,setQ]=useState(""); const [fGroup,setFGroup]=useState(""); const [sort,setSort]=useState("group");
+  const homeById={}; homes.forEach(h=>homeById[h.id]=h);
+  const groupOf=(name)=>{ const hs=homes.filter(h=>nrm(h.host_name)===nrm(name)&&h.host_group!=null);
+    if(!hs.length) return null; const c={}; hs.forEach(h=>{c[h.host_group]=(c[h.host_group]||0)+1;});
+    return parseInt(Object.keys(c).sort((a,b)=>c[b]-c[a])[0]); };
+  const names=Array.from(new Set([...HOST_ROSTER, ...homes.map(h=>nrm(h.host_name))])).filter(Boolean);
+  let rows=names.map(n=>({...critStats(homes,n), group:groupOf(n)}));
+  const groups=Array.from(new Set(rows.map(r=>r.group).filter(g=>g!=null))).sort((a,b)=>a-b);
+  const qualified=rows.filter(r=>r.passed===3).length, activeN=rows.filter(r=>r.total>0).length;
+  if(fGroup) rows=rows.filter(r=> fGroup==="none"? r.group==null : String(r.group)===fGroup);
+  if(sort==="group") rows.sort((a,b)=> (a.group==null?99:a.group)-(b.group==null?99:b.group) || b.passed-a.passed || b.orgSuccess-a.orgSuccess || a.name.localeCompare(b.name,"th"));
+  else rows.sort((a,b)=> b.passed-a.passed || b.orgSuccess-a.orgSuccess || b.guest-a.guest || a.name.localeCompare(b.name,"th"));
+  const sel=q.trim()?nrm(q):"";
+  const selStats=sel?critStats(homes,sel):null;
+  const mineHomes=sel?homes.filter(h=>nrm(h.host_name)===sel).sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")):[];
+  const helped=sel?signups.filter(s=>nrm(s.assist_name)===sel).map(s=>homeById[s.home_id]).filter(Boolean).sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")):[];
+  const allNames=Array.from(new Set([...names, ...signups.map(s=>nrm(s.assist_name))])).sort((a,b)=>a.localeCompare(b,"th"));
+  return (
+    <div className="wrap page">
+      <div className="sec-h"><div><div className="eyebrow">เกณฑ์รายคน · Leadership Program</div>
+        <h2>การผ่านเกณฑ์ และสถิติรายบุคคล</h2>
+        <p>รายชื่อครบทุกคน · กรอง/เรียงตามกลุ่มได้ · กดชื่อเพื่อดูสถิติรายบุคคล · ทำงานแล้ว {activeN} คน · ผ่านครบ {qualified} คน</p></div></div>
+      <div className="filterbar">
+        <div className="field"><label><SVG d={I.search} size={13}/>ค้นหา / เลือกคน</label>
+          <input className="inp" list="critnames" value={q} placeholder="พิมพ์ชื่อเพื่อดูรายบุคคล" onChange={e=>setQ(e.target.value)} />
+          <datalist id="critnames">{allNames.map(n=><option key={n} value={n}/>)}</datalist></div>
+        <div className="field"><label><SVG d={I.user} size={13}/>กลุ่ม</label>
+          <select className="sel" value={fGroup} onChange={e=>setFGroup(e.target.value)}>
+            <option value="">— ทุกกลุ่ม —</option>
+            {groups.map(g=><option key={g} value={String(g)}>กลุ่ม {g}</option>)}
+            <option value="none">ไม่ระบุกลุ่ม</option></select></div>
+        <div className="field"><label><SVG d={I.chart} size={13}/>เรียงตาม</label>
+          <select className="sel" value={sort} onChange={e=>setSort(e.target.value)}>
+            <option value="group">กลุ่ม</option>
+            <option value="passed">ผ่านเกณฑ์มากสุด</option></select></div>
+        <div className="res">แสดง <b>{rows.length}</b> คน</div>
+        {(q||fGroup) && <button className="btn btn-sm" onClick={()=>{setQ("");setFGroup("");}}><SVG d={I.x} size={14}/>ล้าง</button>}
+      </div>
+
+      {selStats && <CriteriaPanel s={selStats}/>}
+      {sel && (mineHomes.length>0||helped.length>0) && <div className="panel">
+        {mineHomes.length>0 && <div style={{marginBottom:helped.length?14:0}}>
+          <div className="lead-sub" style={{marginBottom:6,fontWeight:600}}>งานที่จัด ({mineHomes.length})</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {mineHomes.map(h=>{ const {day,mo}=fmtDate(h.event_date);
+              return <span className="tagperson" key={h.id}><SVG d={(KIND_META[h.kind||"Home"]||KIND_META.Home).icon} size={13}/>{day} {mo} · {h.kind||"Home"}{h.completed?" · "+resultText(h):""}</span>; })}
+          </div></div>}
+        {helped.length>0 && <div>
+          <div className="lead-sub" style={{marginBottom:6,fontWeight:600}}>เคยไปช่วยงานของ ({helped.length})</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {helped.map((h,i)=>{ const {day,mo}=fmtDate(h.event_date);
+              return <span className="tagperson" key={h.id+"_"+i}><span className="ava" style={{width:22,height:22}}>{initials(h.host_name)}</span>{h.host_name} · {day} {mo}</span>; })}
+          </div></div>}
+      </div>}
+
+      <div className="panel">
+        <h3 style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.trophy} size={18}/>รายชื่อทั้งหมด</h3>
+        <p className="lead">เกณฑ์: จัด Home สำเร็จ ≥ {CRIT_ORG} · Guest ≥ {CRIT_GUEST} · ลงทะเบียน ≥ {CRIT_REG} (Home สำเร็จ = Guest ≥ {MIN_GUEST} & ลงทะเบียน ≥ 25%)</p>
+        {rows.length===0 ? <div className="empty-assist">ไม่พบรายชื่อตามตัวกรอง</div> :
+          <div>{rows.map((r,i)=>{
+            const showHdr=sort==="group"&&(i===0||rows[i-1].group!==r.group);
+            return (
+              <React.Fragment key={r.name}>
+                {showHdr && <div className="grpdiv">{r.group!=null?("กลุ่ม "+r.group):"ไม่ระบุกลุ่ม"}</div>}
+                <div className={"lead-row click"+(sel===nrm(r.name)?" sel":"")} onClick={()=>setQ(r.name)}>
+                  <span className="ava" style={{flex:"0 0 auto"}}>{initials(r.name)}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div className="lead-name">{r.name}</div>
+                    <div className="lead-sub">{r.group!=null?("กลุ่ม "+r.group+" · "):""}Home {r.home} · Event {r.event} · Call {r.call}</div></div>
+                  <span className={"cpill"+(r.c1?" ok":"")}>จัด {r.orgSuccess}/{CRIT_ORG}</span>
+                  <span className={"cpill"+(r.c2?" ok":"")}>G {r.guest}/{CRIT_GUEST}</span>
+                  <span className={"cpill"+(r.c3?" ok":"")}>R {r.reg}/{CRIT_REG}</span>
+                  <span className={"cstatus"+(r.passed===3?" done":"")}>{r.passed===3?"ผ่าน ✓":r.passed+"/3"}</span>
+                </div>
+              </React.Fragment>);
+          })}</div>}
       </div>
     </div>
   );
@@ -1294,7 +1325,7 @@ function App(){
   const connect=()=>{ const c=loadCfg(); setCfg(c); setDb(makeSupabaseDB(c)); setTab("board"); };
   const disconnect=()=>{ setCfg(null); setDb(makeDemoDB()); };
   const upcomingN=homes.filter(h=>!isArchived(h)).length, pastN=homes.filter(isArchived).length;
-  const TABS=[{id:"board",label:"บอร์ด",n:upcomingN},{id:"archive",label:"Achieve",n:pastN},{id:"dash",label:"Dashboard"},{id:"host",label:"มุมมอง Host"}];
+  const TABS=[{id:"board",label:"บอร์ด",n:upcomingN},{id:"archive",label:"Achieve",n:pastN},{id:"dash",label:"Dashboard"},{id:"members",label:"เกณฑ์รายคน"},{id:"host",label:"มุมมอง Host"}];
   return (
     <div>
       <datalist id="rosterlist">{HOST_ROSTER.map(n=><option key={n} value={n}/>)}</datalist>
@@ -1319,6 +1350,7 @@ function App(){
             {tab==="board"   && <BoardView   homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
             {tab==="archive" && <ArchiveView homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} />}
             {tab==="dash"    && <DashboardView homes={homes} signups={signups} guests={guests} />}
+            {tab==="members" && <CriteriaView homes={homes} signups={signups} />}
             {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
           </>}
       {showCreate && <CreateModal db={db} onChange={refresh} toast={toast} onClose={()=>setShowCreate(false)} />}
