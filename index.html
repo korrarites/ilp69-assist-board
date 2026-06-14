@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ILP69 Home · บอร์ดลงชื่อ Assist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBFAF6;--paper-2:#F4F2EA;--ink:#15302B;--ink-soft:#3C544D;--muted:#6B7C76;
+    --line:#E4E1D6;--line-strong:#D4D0C2;--green:#0E6E5C;--green-deep:#0A5547;--green-tint:#E6F1ED;
+    --amber:#E0942B;--amber-tint:#FBEFD9;--red:#C0392B;--red-deep:#A5322A;--red-tint:#FBE7E4;--red-line:#E7B4AD;
+    --shadow:0 1px 2px rgba(21,48,43,.05), 0 8px 24px -12px rgba(21,48,43,.18);
+    --shadow-lg:0 24px 60px -24px rgba(21,48,43,.35);--radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:radial-gradient(1200px 500px at 100% -10%, #EAF2EE 0%, transparent 60%),
+      radial-gradient(900px 400px at -10% 0%, #FBEFD9 0%, transparent 55%),var(--paper);
+    color:var(--ink);font-family:"IBM Plex Sans Thai", system-ui, sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;}
+  h1,h2,h3{font-family:"Bai Jamjuree","IBM Plex Sans Thai",sans-serif;}
+  button{font-family:inherit;cursor:pointer}
+  input,select,textarea{font-family:inherit}
+  a{color:var(--green-deep)}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+  .topbar{position:sticky;top:0;z-index:40;backdrop-filter:saturate(1.2) blur(8px);background:rgba(251,250,246,.82);border-bottom:1px solid var(--line)}
+  .topbar-in{display:flex;align-items:center;gap:14px;padding:14px 20px;max-width:1180px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .mark{width:42px;height:42px;border-radius:12px;flex:0 0 auto;background:linear-gradient(145deg,var(--green),var(--green-deep));color:#fff;display:grid;place-items:center;font-family:"Bai Jamjuree";font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.25), var(--shadow)}
+  .mark small{font-size:9px;letter-spacing:.12em;opacity:.85;display:block;line-height:1;margin-top:2px;font-weight:600}
+  .mark b{font-size:16px;line-height:1}
+  .brand-txt h1{font-size:17px;margin:0;letter-spacing:-.01em}
+  .brand-txt p{margin:1px 0 0;font-size:12px;color:var(--muted)}
+  .status{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);white-space:nowrap}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--amber)}
+  .dot.live{background:var(--green);box-shadow:0 0 0 4px var(--green-tint)}
+
+  .tabs{display:flex;gap:4px;padding:10px 20px 0;max-width:1180px;margin:0 auto;flex-wrap:wrap}
+  .tab{border:1px solid transparent;background:transparent;color:var(--ink-soft);padding:9px 15px;border-radius:11px 11px 0 0;font-weight:600;font-size:14px;display:flex;gap:7px;align-items:center}
+  .tab .pill{background:var(--paper-2);color:var(--ink-soft);border-radius:999px;font-size:11px;padding:1px 8px;font-weight:600}
+  .tab[aria-selected="true"]{background:#fff;border-color:var(--line);border-bottom-color:#fff;color:var(--ink)}
+  .tab[aria-selected="true"] .pill{background:var(--green-tint);color:var(--green-deep)}
+  .tabsep{height:1px;background:var(--line);margin-top:-1px}
+  .page{padding:26px 0 80px}
+
+  .eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--green-deep);font-weight:700;font-family:"Bai Jamjuree"}
+  .sec-h{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:4px 0 18px;flex-wrap:wrap}
+  .sec-h h2{font-size:24px;margin:6px 0 0;letter-spacing:-.02em}
+  .sec-h p{margin:4px 0 0;color:var(--muted);font-size:14px}
+
+  .btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink);padding:10px 16px;border-radius:11px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;transition:.15s;box-shadow:var(--shadow)}
+  .btn:hover{transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn-primary{background:linear-gradient(145deg,var(--green),var(--green-deep));border-color:var(--green-deep);color:#fff}
+  .btn-amber{background:linear-gradient(145deg,#EDA63E,var(--amber));border-color:#C97F1E;color:#3a2607}
+  .btn-ghost{background:transparent;box-shadow:none;border-color:transparent;color:var(--green-deep);padding:8px 10px}
+  .btn-ghost:hover{background:var(--green-tint)}
+  .btn-sm{padding:7px 12px;font-size:13px;border-radius:9px}
+  .btn[disabled]{opacity:.5;cursor:not-allowed;transform:none}
+
+  /* deck = grid, see all in one page */
+  .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px;align-items:start}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;position:relative}
+  .card.past{opacity:.95}
+  .card.urgent-card{border-color:var(--red-line);box-shadow:0 0 0 1px var(--red-line), var(--shadow)}
+  .urgent{background:linear-gradient(90deg,var(--red),var(--red-deep));color:#fff;font-family:"Bai Jamjuree";font-weight:700;font-size:12px;padding:7px 14px;display:flex;align-items:center;gap:7px;letter-spacing:.01em}
+  .card-top{padding:16px 16px 14px;border-bottom:1px dashed var(--line);position:relative}
+  .ribbon{position:absolute;top:14px;right:-1px;font-size:11px;font-weight:700;padding:4px 10px 4px 12px;border-radius:999px 0 0 999px;font-family:"Bai Jamjuree";display:inline-flex;gap:5px;align-items:center}
+  .ribbon.open{background:var(--amber-tint);color:#8a5a12}
+  .ribbon.full{background:var(--green-tint);color:var(--green-deep)}
+  .ribbon.done{background:var(--paper-2);color:var(--muted)}
+  .datebig{display:flex;align-items:baseline;gap:8px}
+  .datebig .d{font-family:"Bai Jamjuree";font-weight:700;font-size:34px;line-height:1;letter-spacing:-.02em}
+  .datebig .mo{font-family:"Bai Jamjuree";font-weight:600;font-size:15px;color:var(--green-deep)}
+  .dow{font-size:12.5px;color:var(--muted);margin-top:3px;font-weight:500}
+  .ctitle{font-family:"Bai Jamjuree";font-weight:600;font-size:16px;margin:10px 0 0;letter-spacing:-.01em;color:var(--ink)}
+  .meta{display:flex;flex-direction:column;gap:6px;margin-top:9px}
+  .meta .row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
+  .meta .row svg{flex:0 0 auto;color:var(--muted)}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--paper-2);color:var(--ink-soft);border:1px solid var(--line);font-family:"Bai Jamjuree"}
+  .badge.zoom{background:var(--green-tint);color:var(--green-deep);border-color:#CDE6DD}
+  .badge.onsite{background:var(--amber-tint);color:#8a5512;border-color:#EAD9B0}
+  .badge.result{background:#0E211C;color:#D9EDE6;border-color:#0E211C}
+  .badge.group{background:#ECEAF7;color:#4B3F8F;border-color:#D9D4F0}
+  .host{display:inline-flex;align-items:center;gap:7px;margin-top:11px;font-size:13px}
+  .host .lbl{color:var(--muted)}
+  .ava{width:24px;height:24px;border-radius:50%;background:var(--green-tint);color:var(--green-deep);display:grid;place-items:center;font-weight:700;font-size:11px;font-family:"Bai Jamjuree"}
+
+  .capbar-wrap{padding:13px 16px 6px}
+  .capbar-head{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--muted);margin-bottom:7px}
+  .capbar-head b{color:var(--ink);font-family:"Bai Jamjuree"}
+  .slots{display:flex;gap:5px;flex-wrap:wrap}
+  .slot{width:20px;height:9px;border-radius:99px;background:var(--paper-2);border:1px solid var(--line)}
+  .slot.on{background:linear-gradient(90deg,var(--green),var(--green-deep));border-color:var(--green-deep)}
+  .slot.wait{background:var(--amber);border-color:#C97F1E}
+
+  .assists{padding:8px 16px 4px;display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-height:30px}
+  .arow{display:flex;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--paper);font-size:13.5px}
+  .arow .ava{background:#fff;border:1px solid var(--line)}
+  .arow .nm{font-weight:600;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .chip{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--green-tint);color:var(--green-deep);font-family:"Bai Jamjuree";white-space:nowrap}
+  .chip.wait{background:var(--amber-tint);color:#8a5a12}
+  .xbtn{border:none;background:transparent;color:var(--muted);width:24px;height:24px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto}
+  .xbtn:hover{background:var(--red-tint);color:var(--red)}
+  .empty-assist{font-size:13px;color:var(--muted);padding:10px 2px;text-align:center}
+
+  .card-foot{padding:12px 16px 16px;margin-top:auto}
+  .signform{display:flex;flex-direction:column;gap:8px;margin-top:10px;border-top:1px dashed var(--line);padding-top:12px}
+
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+  .inp,.sel,.ta{width:100%;border:1px solid var(--line-strong);background:#fff;border-radius:10px;padding:10px 12px;font-size:14px;color:var(--ink);transition:.15s}
+  .inp:focus,.sel:focus,.ta:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px var(--green-tint)}
+  .ta{min-height:60px;resize:vertical}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .addcard{border:1.5px dashed var(--line-strong);border-radius:var(--radius);background:transparent;display:grid;place-items:center;color:var(--green-deep);min-height:200px;text-align:center}
+  .addcard:hover{background:#fff;border-color:var(--green)}
+  .addcard .plus{width:46px;height:46px;border-radius:14px;background:var(--green-tint);display:grid;place-items:center;margin:0 auto 12px}
+  .addcard b{font-family:"Bai Jamjuree";font-size:15px}
+  .addcard span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;max-width:170px}
+
+  .empty{border:1.5px dashed var(--line-strong);border-radius:var(--radius);padding:46px 24px;text-align:center;background:#fff}
+  .empty .big{width:60px;height:60px;border-radius:18px;background:var(--green-tint);display:grid;place-items:center;margin:0 auto 16px}
+  .empty h3{margin:0 0 6px;font-size:19px}
+  .empty p{margin:0 auto 18px;color:var(--muted);max-width:420px;font-size:14px}
+
+  .scrim{position:fixed;inset:0;background:rgba(21,48,43,.42);backdrop-filter:blur(3px);z-index:60;display:grid;place-items:start center;padding:40px 16px;overflow:auto}
+  .modal{background:var(--paper);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-lg);width:100%;max-width:560px;overflow:hidden}
+  .modal.sm{max-width:420px}
+  .modal.lg{max-width:1120px}
+  .modal-h{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;background:#fff}
+  .modal-h h3{margin:0;font-size:18px}
+  .modal-h p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+  .modal-b{padding:22px;display:flex;flex-direction:column;gap:14px}
+  .modal-f{padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:#fff}
+
+  .hostgrid{display:grid;grid-template-columns:1fr;gap:16px}
+  .hostcard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .hostcard-h{display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .hc-date{flex:0 0 auto;text-align:center;background:var(--green-tint);border-radius:12px;padding:8px 12px;min-width:64px}
+  .hc-date .d{font-family:"Bai Jamjuree";font-weight:700;font-size:22px;line-height:1;color:var(--green-deep)}
+  .hc-date .mo{font-size:11px;color:var(--green-deep);font-weight:600}
+  .hc-main{min-width:0;flex:1}
+  .hc-main h4{margin:0;font-size:16px;font-family:"Bai Jamjuree"}
+  .hc-main .sub{font-size:13px;color:var(--muted);margin-top:2px}
+  .hc-count{text-align:right;flex:0 0 auto}
+  .hc-count .n{font-family:"Bai Jamjuree";font-weight:700;font-size:20px}
+  .hc-count .l{font-size:11px;color:var(--muted)}
+  .hostcard-b{padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .tagperson{display:inline-flex;align-items:center;gap:7px;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;font-size:13px;font-weight:500}
+
+  .panel{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;margin-bottom:18px}
+  .panel h3{margin:0 0 4px;font-size:17px}
+  .panel .lead{color:var(--muted);font-size:14px;margin:0 0 16px}
+  .note{display:flex;gap:10px;align-items:flex-start;background:var(--amber-tint);border:1px solid #EAD9B0;color:#7a5512;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5}
+  .note.green{background:var(--green-tint);border-color:#CDE6DD;color:var(--green-deep)}
+  pre.sql{background:#0E211C;color:#D9EDE6;border-radius:12px;padding:16px;overflow:auto;font-size:12.5px;line-height:1.55;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:0}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0 0 4px}
+  .steps li{counter-increment:s;position:relative;padding:0 0 14px 38px;font-size:14px;color:var(--ink-soft);line-height:1.55}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:26px;height:26px;border-radius:8px;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;font-family:"Bai Jamjuree"}
+  .steps li b{color:var(--ink)}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:500;z-index:90;box-shadow:var(--shadow-lg);transition:.25s;display:flex;align-items:center;gap:9px;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .hostpick{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .hostpick .field{flex:1;min-width:220px}
+  /* ===== dashboard ===== */
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;position:relative;overflow:hidden}
+  .stat .k{font-size:12.5px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:7px}
+  .stat .v{font-family:"Bai Jamjuree";font-weight:700;font-size:30px;letter-spacing:-.02em;margin-top:8px;line-height:1}
+  .stat .s{font-size:12px;color:var(--muted);margin-top:4px}
+  .stat.green{background:linear-gradient(150deg,var(--green-tint),#fff)}
+  .stat.green .v{color:var(--green-deep)}
+  .stat.amber{background:linear-gradient(150deg,var(--amber-tint),#fff)}
+  .stat.amber .v{color:#8a5512}
+  .dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .lead-list{max-height:430px;overflow:auto;margin:0 -4px}
+  .lead-row{display:flex;align-items:center;gap:12px;padding:9px 6px;border-bottom:1px solid var(--line)}
+  .lead-row:last-child{border-bottom:none}
+  .rank{width:26px;height:26px;border-radius:8px;background:var(--paper-2);color:var(--ink-soft);display:grid;place-items:center;font-family:"Bai Jamjuree";font-weight:700;font-size:13px;flex:0 0 auto}
+  .rank.g1{background:linear-gradient(145deg,#F6D77A,var(--amber));color:#3a2607}
+  .rank.g2{background:#E2DFD3;color:#3C544D}
+  .rank.g3{background:#EAD9B0;color:#7a5512}
+  .lead-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lead-sub{font-size:11.5px;color:var(--muted);font-weight:500;margin-top:1px}
+  .lead-bar{height:8px;border-radius:99px;background:var(--paper-2);overflow:hidden;flex:0 0 96px;max-width:96px}
+  .lead-bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green),var(--green-deep))}
+  .lead-bar.amber>i{background:linear-gradient(90deg,#EDA63E,var(--amber))}
+  .lead-val{font-family:"Bai Jamjuree";font-weight:700;font-size:16px;flex:0 0 auto;min-width:26px;text-align:right}
+  .lead-val small{font-size:11px;color:var(--muted);font-weight:500}
+  .profile{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:4px}
+  .pbox{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  .pbox .pv{font-family:"Bai Jamjuree";font-weight:700;font-size:24px;line-height:1}
+  .pbox .pl{font-size:12px;color:var(--muted);margin-top:5px}
+  .phead{display:flex;align-items:center;gap:13px;margin-bottom:16px}
+  .phead .ava{width:48px;height:48px;font-size:18px}
+  .phead h3{margin:0;font-size:20px}
+  .phead .role{font-size:13px;color:var(--muted);margin-top:2px}
+  /* ===== guest form ===== */
+  .ghead{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .ghead .field label{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .ginfo{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--ink-soft)}
+  .gsum{display:flex;gap:10px}
+  .gsum .b{flex:1;text-align:center;border-radius:12px;padding:9px 6px;border:1px solid var(--line)}
+  .gsum .b.g{background:var(--amber-tint);border-color:#EAD9B0}
+  .gsum .b.r{background:var(--green-tint);border-color:#CDE6DD}
+  .gsum .b .n{font-family:"Bai Jamjuree";font-weight:700;font-size:22px;line-height:1}
+  .gsum .b.g .n{color:#8a5512}.gsum .b.r .n{color:var(--green-deep)}
+  .gsum .b .l{font-size:11px;color:var(--muted);margin-top:3px}
+  .gwrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:50vh}
+  .gtbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;min-width:920px}
+  .gtbl th{position:sticky;top:0;z-index:1;background:#CFEFE7;color:var(--green-deep);font-family:"Bai Jamjuree";font-weight:700;font-size:12px;padding:9px 8px;text-align:left;border-bottom:1px solid var(--line-strong);white-space:nowrap}
+  .gtbl td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;vertical-align:middle}
+  .gtbl td:last-child{border-right:none}
+  .gtbl tr:last-child td{border-bottom:none}
+  .gtbl tr.reg{background:var(--green-tint)}
+  .gtbl tr.no{background:var(--paper-2)}
+  .gtbl .num{width:38px;text-align:center;color:var(--muted);font-weight:600}
+  .gtbl input,.gtbl select{border:none;background:transparent;width:100%;padding:9px 8px;font-size:13px;color:var(--ink)}
+  .gtbl input:focus,.gtbl select:focus{outline:none;background:#fff;box-shadow:inset 0 0 0 2px var(--green-tint)}
+  .gtbl .ctr{text-align:center}
+  .gtbl input[type=checkbox]{width:18px;height:18px;accent-color:var(--green-deep);cursor:pointer}
+  .gtbl .delg{border:none;background:transparent;color:var(--muted);width:30px;height:30px;border-radius:7px;display:grid;place-items:center;margin:0 auto}
+  .gtbl .delg:hover{background:var(--red-tint);color:var(--red)}
+  .gtbl .selint{font-weight:600}
+  .skeleton{background:linear-gradient(90deg,#eee,#f6f5f0,#eee);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:8px}
+  @keyframes sk{to{background-position:-200% 0}}
+  .footer{max-width:1180px;margin:0 auto;padding:24px 20px 40px;color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line)}
+
+  @media (max-width:760px){.dash-cols{grid-template-columns:1fr}}
+  @media (max-width:640px){.sec-h h2{font-size:21px}.two{grid-template-columns:1fr}.brand-txt p{display:none}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ===== CONFIG ===== */
+const HARDCODED_URL = "";
+const HARDCODED_KEY = "";
+function loadCfg(){ if(HARDCODED_URL&&HARDCODED_KEY) return {url:HARDCODED_URL,key:HARDCODED_KEY};
+  try{const c=JSON.parse(localStorage.getItem("ilp69_cfg")||"null"); if(c&&c.url&&c.key) return c;}catch(e){} return null; }
+function saveCfg(u,k){ localStorage.setItem("ilp69_cfg",JSON.stringify({url:u.trim(),key:k.trim()})); }
+function clearCfg(){ localStorage.removeItem("ilp69_cfg"); }
+
+/* ===== รายชื่อ Host (รายชื่อทีม ILP69) ===== */
+const HOST_ROSTER = [
+"ก้อง จิตรกร","ก้อย นงนภัส","กิ๊บ ณิชาภา","กี้ ธิดาพร","กุ๊กกิ๊ก ชมพัช","กุ้ง วรรณภัสสรณ์","เก่ง ภัควรรธน์","ไก่ พรเทพ",
+"ข้าว ชญานภัส","คอฟฟี่ ภควัต","จ๋า ปิยะดา","จุ๋งจิ๋ง ประกายดาว","จุ๊บ สุทธิดา","เจมส์ จักรธรรม","แจน ชรินทร์ทิพย์",
+"ดิว ณัฐวุฒิ","ดิว พงศธร","ต้น เทวินทร์","ต้อง สิทธิเทพ","ติ๊ก วิไลพร","ติ๊กต๊อก บัวลิน","ตี๋ อภิชาติ",
+"ธอปต์ ณอัฐฐ์กาล","ธี ฐิฏิมา","น็อต วชิรวิชญ์","น้อย สุพินดา","นะโม ณัฐพงษ์","นัท ณัฐวีร์","น้ำแข็ง ศิวรรณ",
+"บัส บัสรีย์","บาส นันทวัฒน์","บิว ธนัช","บิว อาสิลา","บี คณิสร์ณัฐ","บูม สัญญพงศ์","โบโบ้ สุกสาคร","ใบเฟิร์น ปานภัสส์",
+"ปลื้ม ปฏิพาณ","ป๋อมแป๋ม ธนวัฒน์","ปุ๊ย พรรณทิพย์","ปู วัชรินทร์","เป้ ชัยพัฒน์","เปิ้ล เบญจวรรณ","พง สมพงค์",
+"พร ธนวรัญญ์","พลอย ธิษณามดี","แพ็ตตี้ แสงดารา","แพนเค้ก สมิตานันท์","มอธ นนทพัทธ์","มิ้น ศาศวัต","มุก มุกสวรรค์",
+"โยดา ชมภูเทียนทิพย์","รถซิ่ง พิริยาภรณ์","รัตน์ ลลิฉัตร์","วัฒน์ นิวัฒน์","วิน กิตติ","ส้ม เกตุเกล้า","ส้ม ต้นตระการ",
+"สิป สิปปกร","หมี่ สริตา","หยก ปวรรัตน์","หลุยส์ สุภาพร","เหมียว ภัคจิรา","ออมสิน จิราพร","อังค์ อังค์ฌาญลักษณ์",
+"อัญ พิชญา","อาย มาริษา","อาร์ต สุไลมาน","อี้ด ฉันทนา","อุ้ม นพกฤษฏิ์","อุ้ย อภิญญา","เอ้ จิรวุฒ","เอก กรฤต",
+"เอ็ม ศรัณย์ธน","เอมมี่ นิติกร","แอน จันทร์จิรา","โอ๊ต เจนวิทย์","โอเว่น ณฐ","ไอซ์ ธันวา","ฮิว กฐิพัฒน์","แฮม จักรกริช"
+];
+
+/* ===== ตัวเลือกตามชีต ===== */
+const SLOT_EVENING="19.00 - 22.00 น.", SLOT_AFTERNOON="14.00 - 17.00 น.";
+const TIME_SLOTS=[SLOT_EVENING,"18.00 - 22.00 น.",SLOT_AFTERNOON,"13.00 - 17.30 น.","13.00 - 16.00 น.","อื่นๆ"];
+const CHANNELS=["Online-Zoom","Onsite"];
+
+/* ===== ข้อมูลตั้งต้นจากตาราง ILP69 ===== */
+const SEED=[
+  {host:"วัฒน์69",        date:"2026-06-10", slot:SLOT_EVENING,   address:"",       completed:true,  g:4, r:1, assists:["วัฒน์","คุณ ธี","หยก"]},
+  {host:"หลุย 69",        date:"2026-06-10", slot:SLOT_EVENING,   address:"",       completed:true,  g:2, r:2, assists:[]},
+  {host:"วิน 69",         date:"2026-06-11", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:[]},
+  {host:"ติว 69",         date:"2026-06-11", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:[]},
+  {host:"ใบเฟิร์น 69",     date:"2026-06-11", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:["ธอปต์ 69"]},
+  {host:"โยตา 69",        date:"2026-06-11", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:[]},
+  {host:"อังค์ 69",        date:"2026-06-12", slot:SLOT_EVENING,   address:"Hi Eng", completed:false, g:null,r:null, assists:[]},
+  {host:"ตั๊ก 69",        date:"2026-06-12", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:[]},
+  {host:"พร 69",          date:"2026-06-13", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:["อึ๋ม 69"]},
+  {host:"อุ้ย 69",        date:"2026-06-13", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:["เอ๋ 69","หมี่69"]},
+  {host:"บูม69",          date:"2026-06-13", slot:SLOT_AFTERNOON, address:"",       completed:false, g:null,r:null, assists:["ธอปต์ 69"]},
+  {host:"บี 69",          date:"2026-06-13", slot:SLOT_AFTERNOON, address:"",       completed:false, g:null,r:null, assists:[]},
+  {host:"กุ้ง 69",        date:"2026-06-13", slot:SLOT_AFTERNOON, address:"",       completed:false, g:null,r:null, assists:[]},
+  {host:"นัท 69",         date:"2026-06-14", slot:SLOT_AFTERNOON, address:"",       completed:false, g:null,r:null, assists:["อังค์ 69"]},
+  {host:"หมี่ 69",        date:"2026-06-14", slot:SLOT_AFTERNOON, address:"",       completed:false, g:null,r:null, assists:["ต้น 69","จุ๋งจิ๋ง 69"]},
+  {host:"อาร์ต สุไลมาน69", date:"2026-06-14", slot:SLOT_AFTERNOON, address:"",       completed:false, g:null,r:null, assists:[]},
+  {host:"มุก 69",         date:"2026-06-16", slot:SLOT_AFTERNOON, address:"",       completed:false, g:null,r:null, assists:[]},
+  {host:"เป้ 69",         date:"2026-06-17", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:["เป้ 69 (สร้าง8เคส)"]},
+  {host:"แฮม 69",         date:"2026-06-18", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:[]},
+  {host:"กุ๊กกิ๊ก 69",     date:"2026-06-18", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:["นัท 69"]},
+  {host:"เป้ 69",         date:"2026-06-24", slot:SLOT_EVENING,   address:"",       completed:false, g:null,r:null, assists:["เป้ 69 (สร้าง4เคส)"]},
+];
+
+/* ===== DATA LAYER ===== */
+function rowFromSeed(r){ return { host_name:r.host, host_group:(r.group==null?null:r.group), title:null, event_date:r.date, time_slot:r.slot, channel:"Online-Zoom",
+  address:r.address||null, assists_needed:9, completed:!!r.completed, result_g:(r.g==null?null:r.g), result_r:(r.r==null?null:r.r), host_contact:null, note:null }; }
+function makeSupabaseDB(cfg){
+  const sb=window.supabase.createClient(cfg.url,cfg.key);
+  return {
+    mode:"live", client:sb,
+    async listHomes(){ const {data,error}=await sb.from("ilp69_homes").select("*").order("event_date",{ascending:true}); if(error) throw error; return data||[]; },
+    async listSignups(){ const {data,error}=await sb.from("ilp69_signups").select("*").order("created_at",{ascending:true}); if(error) throw error; return data||[]; },
+    async createHome(h){ const {data,error}=await sb.from("ilp69_homes").insert(h).select("id").single(); if(error) throw error; return data.id; },
+    async updateHome(id,p){ const {error}=await sb.from("ilp69_homes").update(p).eq("id",id); if(error) throw error; },
+    async deleteHome(id){ const {error}=await sb.from("ilp69_homes").delete().eq("id",id); if(error) throw error; },
+    async createSignup(s){ const {error}=await sb.from("ilp69_signups").insert(s); if(error) throw error; },
+    async deleteSignup(id){ const {error}=await sb.from("ilp69_signups").delete().eq("id",id); if(error) throw error; },
+    async listGuests(){ const {data,error}=await sb.from("ilp69_guests").select("*").order("created_at",{ascending:true}); if(error) throw error; return data||[]; },
+    async createGuest(g){ const {data,error}=await sb.from("ilp69_guests").insert(g).select("id").single(); if(error) throw error; return data.id; },
+    async updateGuest(id,p){ const {error}=await sb.from("ilp69_guests").update(p).eq("id",id); if(error) throw error; },
+    async deleteGuest(id){ const {error}=await sb.from("ilp69_guests").delete().eq("id",id); if(error) throw error; },
+    async countHomes(){ const {count,error}=await sb.from("ilp69_homes").select("id",{count:"exact",head:true}); if(error) throw error; return count||0; },
+    subscribe(cb){ const ch=sb.channel("ilp69-rt")
+      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_homes"},cb)
+      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_signups"},cb)
+      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_guests"},cb).subscribe();
+      return ()=>{try{sb.removeChannel(ch)}catch(e){}}; }
+  };
+}
+function makeDemoDB(){
+  const K="ilp69_demo_v3";
+  const read=()=>{ let d; try{d=JSON.parse(localStorage.getItem(K)||'{"homes":[],"signups":[],"guests":[]}')}catch(e){d={homes:[],signups:[],guests:[]}}
+    d.homes=d.homes||[]; d.signups=d.signups||[]; d.guests=d.guests||[]; return d; };
+  const write=(d)=>{ localStorage.setItem(K,JSON.stringify(d)); window.dispatchEvent(new Event("ilp69-demo-change")); };
+  const uid=()=>(crypto.randomUUID?crypto.randomUUID():"id"+Date.now()+Math.random().toString(16).slice(2));
+  if(!localStorage.getItem(K)){
+    const homes=[],signups=[];
+    SEED.forEach(r=>{ const id=uid(); homes.push({...rowFromSeed(r),id,created_at:new Date().toISOString()});
+      r.assists.forEach((a,i)=>signups.push({id:uid(),home_id:id,assist_name:a,cohort:null,contact:null,created_at:new Date(Date.now()+i).toISOString()})); });
+    write({homes,signups});
+  }
+  return {
+    mode:"demo",
+    async listHomes(){ return read().homes.slice().sort((a,b)=>a.event_date.localeCompare(b.event_date)); },
+    async listSignups(){ return read().signups.slice().sort((a,b)=>(a.created_at||"").localeCompare(b.created_at||"")); },
+    async createHome(h){ const d=read(); const id=uid(); d.homes.push({...h,id,created_at:new Date().toISOString()}); write(d); return id; },
+    async updateHome(id,p){ const d=read(); d.homes=d.homes.map(x=>x.id===id?{...x,...p}:x); write(d); },
+    async deleteHome(id){ const d=read(); d.homes=d.homes.filter(x=>x.id!==id); d.signups=d.signups.filter(x=>x.home_id!==id); d.guests=d.guests.filter(x=>x.home_id!==id); write(d); },
+    async createSignup(s){ const d=read(); d.signups.push({...s,id:uid(),created_at:new Date().toISOString()}); write(d); },
+    async deleteSignup(id){ const d=read(); d.signups=d.signups.filter(x=>x.id!==id); write(d); },
+    async listGuests(){ return read().guests.slice().sort((a,b)=>(a.created_at||"").localeCompare(b.created_at||"")); },
+    async createGuest(g){ const d=read(); const id=uid(); d.guests.push({...g,id,created_at:new Date().toISOString()}); write(d); return id; },
+    async updateGuest(id,p){ const d=read(); d.guests=d.guests.map(x=>x.id===id?{...x,...p}:x); write(d); },
+    async deleteGuest(id){ const d=read(); d.guests=d.guests.filter(x=>x.id!==id); write(d); },
+    async countHomes(){ return read().homes.length; },
+    subscribe(cb){ const f=()=>cb(); window.addEventListener("ilp69-demo-change",f); window.addEventListener("storage",f);
+      return ()=>{window.removeEventListener("ilp69-demo-change",f);window.removeEventListener("storage",f);}; }
+  };
+}
+async function importSeed(db){ for(const r of SEED){ const id=await db.createHome(rowFromSeed(r));
+  for(const a of r.assists){ await db.createSignup({home_id:id,assist_name:a,cohort:null,contact:null}); } } }
+
+/* ===== helpers ===== */
+const todayStr=()=>{ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const isPast=(s)=> s<todayStr();
+const isArchived=(h)=> !!h.completed || isPast(h.event_date);
+function daysUntil(s){ const a=new Date(s+"T00:00:00"), t=new Date(todayStr()+"T00:00:00"); return Math.round((a-t)/86400000); }
+function urgentLabel(s){ const d=daysUntil(s); return d===0?"วันนี้":(d===1?"พรุ่งนี้":"อีก "+d+" วัน"); }
+function fmtDate(s){ const d=new Date(s+"T00:00:00");
+  return { day:d.getDate(), mo:new Intl.DateTimeFormat("th-TH",{month:"short"}).format(d), dow:new Intl.DateTimeFormat("th-TH",{weekday:"long"}).format(d) }; }
+function initials(n){ n=(n||"").trim(); return n?n.slice(0,1):"?"; }
+function resultText(h){ if(h.result_g==null&&h.result_r==null) return ""; return (h.result_g||0)+"G "+(h.result_r||0)+"R"; }
+function SVG({d,size=16,sw=1.7}){ return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{d}</svg>; }
+const I={
+  clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+  pin:<><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></>,
+  user:<><circle cx="12" cy="8" r="4"/><path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/></>,
+  phone:<><path d="M5 4h4l1 5-2.5 1.5a12 12 0 0 0 6 6L15 14l5 1v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></>,
+  plus:<><path d="M12 5v14M5 12h14"/></>, x:<><path d="M6 6l12 12M18 6 6 18"/></>,
+  check:<><path d="M20 6 9 17l-5-5"/></>, video:<><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></>,
+  trophy:<><path d="M7 4h10v3a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M9 14h6M8 20h8M12 14v6"/></>,
+  trash:<><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></>, cal:<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></>,
+  flag:<><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></>, bolt:<><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></>,
+  chart:<><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></>,
+  star:<><path d="M12 3.2l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.5l-5.2 2.7 1-5.8L3.6 9.3l5.8-.8z"/></>,
+  search:<><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></>,
+  users:<><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3 2.7-5.2 6-5.2s6 2.2 6 5.2M16 5.2a3.5 3.5 0 0 1 0 6.6M21 20c0-2.4-1.6-4.3-4-4.9"/></>,
+};
+function Toast({msg}){ return <div className={"toast"+(msg?" show":"")}>{msg&&<SVG d={I.check} size={17}/>}{msg}</div>; }
+function ChannelBadge({channel}){ if(!channel) return null; const onsite=/onsite|พบตัว/i.test(channel);
+  return <span className={"badge "+(onsite?"onsite":"zoom")}><SVG d={onsite?I.pin:I.video} size={12}/>{channel}</span>; }
+
+/* ===== sign-up form (ไม่มีรุ่น) ===== */
+function SignForm({onSubmit,onCancel,full}){
+  const [name,setName]=useState(""); const [busy,setBusy]=useState(false);
+  const submit=async()=>{ if(!name.trim()) return; setBusy(true); await onSubmit({assist_name:name.trim()}); setBusy(false); };
+  return (
+    <div className="signform">
+      <div className="field"><label>ลงชื่อช่วยงาน · เลือกจากรายชื่อ หรือพิมพ์เองได้</label>
+        <input className="inp" list="assistroster" value={name} autoFocus placeholder="เลือก/พิมพ์ชื่อ เช่น เอก กรฤต"
+          onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()} />
+        <datalist id="assistroster">{HOST_ROSTER.map(n=><option key={n} value={n}/>)}</datalist></div>
+      {full && <div className="note" style={{padding:"8px 11px"}}>เต็มแล้ว — ชื่อของคุณจะถูกบันทึกเป็น <b style={{marginLeft:4}}>สำรอง</b></div>}
+      <div style={{display:"flex",gap:8}}>
+        <button className="btn btn-primary btn-sm" disabled={busy||!name.trim()} onClick={submit} style={{flex:1,justifyContent:"center"}}>
+          <SVG d={I.check} size={15}/>{busy?"กำลังบันทึก…":"ยืนยันลงชื่อ"}</button>
+        <button className="btn btn-sm" onClick={onCancel}>ยกเลิก</button>
+      </div>
+    </div>
+  );
+}
+
+/* ===== event card ===== */
+function EventCard({home, signups, guests, db, onChange, toast}){
+  const [open,setOpen]=useState(false); const [gOpen,setGOpen]=useState(false);
+  const list=signups.filter(s=>s.home_id===home.id);
+  const glist=(guests||[]).filter(g=>g.home_id===home.id);
+  const need=home.assists_needed||9, past=isPast(home.event_date);
+  const filled=list.length, isFull=filled>=need;
+  const {day,mo,dow}=fmtDate(home.event_date);
+  const du=daysUntil(home.event_date), urgent=!past && du>=0 && du<=7;
+  const slots=[]; for(let i=0;i<Math.max(need,filled);i++) slots.push(<span key={i} className={"slot "+(i<filled?(i<need?"on":"wait"):"")}/>);
+  const add=async(p)=>{ try{ await db.createSignup({home_id:home.id,assist_name:p.assist_name,cohort:null,contact:null});
+    setOpen(false); toast("ลงชื่อเรียบร้อย ✦ ขอบคุณที่มาช่วยกัน"); onChange(); }catch(e){ toast("บันทึกไม่สำเร็จ: "+(e.message||e)); } };
+  const remove=async(id)=>{ try{ await db.deleteSignup(id); toast("ถอนชื่อแล้ว"); onChange(); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
+  return (
+    <div className={"card"+(past?" past":"")+(urgent?" urgent-card":"")}>
+      {urgent && <div className="urgent"><SVG d={I.bolt} size={14}/>ต้องการด่วน · {urgentLabel(home.event_date)}</div>}
+      <div className="card-top">
+        <span className={"ribbon "+(past?"done":(isFull?"full":"open"))}>{past?"จบแล้ว":(isFull?"ครบแล้ว":"ว่าง "+(need-filled))}</span>
+        <div className="datebig"><span className="d">{day}</span><span className="mo">{mo}</span></div>
+        <div className="dow">{dow}</div>
+        <div className="ctitle">{home.title||home.host_name}</div>
+        <div className="meta">
+          {home.time_slot && <div className="row"><SVG d={I.clock} size={15}/>{home.time_slot}</div>}
+          {home.address && <div className="row"><SVG d={I.pin} size={15}/>{home.address}</div>}
+          {home.intro_leader && <div className="row"><SVG d={I.star} size={15}/>IL · {home.intro_leader}</div>}
+          {home.zoom_manager && <div className="row"><SVG d={I.video} size={15}/>ZM · {home.zoom_manager}</div>}
+          {home.host_contact && <div className="row"><SVG d={I.phone} size={15}/>{home.host_contact}</div>}
+        </div>
+        <div className="badges"><ChannelBadge channel={home.channel}/>{home.host_group && <span className="badge group"><SVG d={I.user} size={11}/>กลุ่ม {home.host_group}</span>}</div>
+        <div className="host"><span className="ava">{initials(home.host_name)}</span><span className="lbl">ผู้จัด Home ·&nbsp;</span><b style={{fontWeight:600}}>{home.host_name}</b></div>
+      </div>
+      <div className="capbar-wrap">
+        <div className="capbar-head"><span>ผู้ช่วย (Assist)</span><span><b>{filled}</b> / {need}{filled>need?" · +"+(filled-need)+" สำรอง":""}</span></div>
+        <div className="slots">{slots.length?slots:<span className="slot"/>}</div>
+      </div>
+      <div className="assists">
+        {list.length===0 && <div className="empty-assist">ยังไม่มีใครลงชื่อ · เป็นคนแรกเลย!</div>}
+        {list.map((s,idx)=>(
+          <div className="arow" key={s.id}>
+            <span className="ava">{initials(s.assist_name)}</span>
+            <span className="nm">{s.assist_name}</span>
+            {idx>=need && <span className="chip wait">สำรอง</span>}
+            <button className="xbtn" title="ถอนชื่อ" onClick={()=>remove(s.id)}><SVG d={I.x} size={15}/></button>
+          </div>
+        ))}
+      </div>
+      {!past && <div className="card-foot">
+        {open ? <SignForm full={isFull} onSubmit={add} onCancel={()=>setOpen(false)}/>
+          : <button className="btn btn-amber" style={{width:"100%",justifyContent:"center"}} onClick={()=>setOpen(true)}>
+              <SVG d={I.plus} size={16}/>{isFull?"ลงชื่อเป็นสำรอง":"ลงชื่อช่วยงาน"}</button>}
+        <button className="btn btn-ghost btn-sm" style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>setGOpen(true)}>
+          <SVG d={I.users} size={15}/>รายละเอียดแขก{glist.length>0?` · ${glist.length}G ${glist.filter(g=>g.registered).length}R`:" / สรุป G·R"}</button>
+      </div>}
+      {gOpen && <GuestModal home={home} guests={guests||[]} db={db} onChange={onChange} toast={toast} onClose={()=>setGOpen(false)} />}
+    </div>
+  );
+}
+
+/* ===== create / edit home modal ===== */
+function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
+  const edit=!!home;
+  const knownSlot=edit&&TIME_SLOTS.includes(home.time_slot);
+  const [f,setF]=useState(edit
+    ? {host_name:home.host_name||"",host_group:home.host_group==null?"":String(home.host_group),title:home.title||"",
+       event_date:home.event_date||"",time_slot:knownSlot?home.time_slot:"อื่นๆ",slotOther:knownSlot?"":(home.time_slot||""),
+       channel:home.channel||"Online-Zoom",address:home.address||"",assists_needed:home.assists_needed||9,
+       host_contact:home.host_contact||"",note:home.note||"",intro_leader:home.intro_leader||"",zoom_manager:home.zoom_manager||""}
+    : {host_name:defaultHost||"",host_group:"",title:"",event_date:"",time_slot:SLOT_EVENING,slotOther:"",
+       channel:"Online-Zoom",address:"",assists_needed:9,host_contact:"",note:"",intro_leader:"",zoom_manager:""});
+  const [busy,setBusy]=useState(false); const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  const onsite=/onsite/i.test(f.channel); const ok=f.host_name.trim()&&f.event_date;
+  const save=async()=>{ if(!ok) return; setBusy(true);
+    try{ const slot=f.time_slot==="อื่นๆ"?(f.slotOther.trim()||"อื่นๆ"):f.time_slot;
+      const payload={ host_name:f.host_name.trim(), host_group:(f.host_group===""?null:parseInt(f.host_group)), title:f.title.trim()||null, event_date:f.event_date, time_slot:slot,
+        channel:f.channel, address:f.address.trim()||null, assists_needed:Math.min(9,Math.max(1,parseInt(f.assists_needed)||9)),
+        host_contact:f.host_contact.trim()||null, note:f.note.trim()||null, intro_leader:f.intro_leader.trim()||null, zoom_manager:f.zoom_manager.trim()||null };
+      if(edit){ await db.updateHome(home.id,payload); toast("บันทึกการแก้ไขแล้ว"); }
+      else{ await db.createHome({...payload, completed:false, result_g:null, result_r:null}); toast("สร้างงาน Home เรียบร้อย"); }
+      onChange(); onClose();
+    }catch(e){ toast((edit?"บันทึกไม่สำเร็จ: ":"สร้างไม่สำเร็จ: ")+(e.message||e)); setBusy(false); } };
+  return (
+    <div className="scrim" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.cal} size={18}/></div>
+          <div><h3>{edit?"แก้ไขงาน Home":"สร้างงาน Home Intro"}</h3><p>{edit?"ปรับแก้รายละเอียดงานนี้ได้ทั้งหมด แม้งานจะผ่านไปแล้ว":"เลือกผู้จัด วัน เวลา ช่องทาง และจำนวน Assist"}</p></div></div>
+        <div className="modal-b">
+          <div className="two">
+            <div className="field"><label>ผู้จัด Home (Host) *</label>
+              <input className="inp" list="rosterlist" value={f.host_name} placeholder="พิมพ์/เลือกชื่อ เช่น เอก กรฤต" onChange={e=>set("host_name",e.target.value)} /></div>
+            <div className="field"><label>กลุ่ม (1–16)</label>
+              <select className="sel" value={f.host_group} onChange={e=>set("host_group",e.target.value)}>
+                <option value="">— เลือกกลุ่ม —</option>
+                {Array.from({length:16},(_,i)=>i+1).map(n=><option key={n} value={n}>{"กลุ่ม "+n}</option>)}</select></div>
+          </div>
+          <div className="field"><label>ชื่องาน / หัวข้อ (ไม่บังคับ)</label>
+            <input className="inp" value={f.title} placeholder="เว้นว่างได้ จะใช้ชื่อ Host เป็นหัวการ์ด" onChange={e=>set("title",e.target.value)} /></div>
+          <div className="two">
+            <div className="field"><label>Introduction Leader</label>
+              <input className="inp" list="rosterlist" value={f.intro_leader} placeholder="เช่น แพรวฟ้า 66" onChange={e=>set("intro_leader",e.target.value)} /></div>
+            <div className="field"><label>Zoom Manager</label>
+              <input className="inp" list="rosterlist" value={f.zoom_manager} placeholder="เช่น สปาร์ค63" onChange={e=>set("zoom_manager",e.target.value)} /></div>
+          </div>
+          <div className="two">
+            <div className="field"><label>วันที่ *</label>
+              <input className="inp" type="date" value={f.event_date} min={edit?undefined:todayStr()} onChange={e=>set("event_date",e.target.value)} /></div>
+            <div className="field"><label>เวลา</label>
+              <select className="sel" value={f.time_slot} onChange={e=>set("time_slot",e.target.value)}>{TIME_SLOTS.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+          </div>
+          {f.time_slot==="อื่นๆ" && <div className="field"><label>ระบุเวลา</label>
+            <input className="inp" value={f.slotOther} placeholder="เช่น 10.00 - 12.00 น." onChange={e=>set("slotOther",e.target.value)} /></div>}
+          <div className="two">
+            <div className="field"><label>Channel</label>
+              <select className="sel" value={f.channel} onChange={e=>set("channel",e.target.value)}>{CHANNELS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+            <div className="field"><label>จำนวน Assist ที่เปิดรับ (สูงสุด 9)</label>
+              <input className="inp" type="number" min="1" max="9" value={f.assists_needed} onChange={e=>set("assists_needed",e.target.value)} /></div>
+          </div>
+          <div className="field"><label>{onsite?"ที่อยู่ (Onsite) *":"Address (ถ้าเป็น Onsite)"}</label>
+            <input className="inp" value={f.address} placeholder={onsite?"กรอกสถานที่จัดงาน":"เว้นว่างได้ถ้าออนไลน์"} onChange={e=>set("address",e.target.value)} /></div>
+          <div className="field"><label>ช่องทางติดต่อ Host</label>
+            <input className="inp" value={f.host_contact} placeholder="LINE / เบอร์โทร" onChange={e=>set("host_contact",e.target.value)} /></div>
+          <div className="field"><label>หมายเหตุ</label>
+            <textarea className="ta" value={f.note} placeholder="รายละเอียดเพิ่มเติม" onChange={e=>set("note",e.target.value)} /></div>
+        </div>
+        <div className="modal-f">
+          <button className="btn" onClick={onClose}>ยกเลิก</button>
+          <button className="btn btn-primary" disabled={!ok||busy} onClick={save}><SVG d={I.check} size={15}/>{busy?"กำลังบันทึก…":(edit?"บันทึกการแก้ไข":"สร้างงาน")}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== complete modal (G / R) ===== */
+function CompleteModal({home, db, onChange, toast, onClose}){
+  const [g,setG]=useState(home.result_g==null?"":String(home.result_g));
+  const [r,setR]=useState(home.result_r==null?"":String(home.result_r));
+  const [busy,setBusy]=useState(false);
+  const save=async()=>{ setBusy(true);
+    try{ await db.updateHome(home.id,{completed:true, result_g:g===""?0:(parseInt(g)||0), result_r:r===""?0:(parseInt(r)||0)});
+      toast("บันทึกผลแล้ว → ย้ายไป Achieve"); onChange(); onClose();
+    }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); setBusy(false); } };
+  return (
+    <div className="scrim" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal sm">
+        <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.flag} size={17}/></div>
+          <div><h3>บันทึกผล Home</h3><p>{home.title||home.host_name} · {fmtDate(home.event_date).day} {fmtDate(home.event_date).mo}</p></div></div>
+        <div className="modal-b">
+          <div className="two">
+            <div className="field"><label>G — Guest (จำนวนแขก)</label>
+              <input className="inp" type="number" min="0" value={g} placeholder="0" autoFocus onChange={e=>setG(e.target.value)} /></div>
+            <div className="field"><label>R — Register (สมัคร)</label>
+              <input className="inp" type="number" min="0" value={r} placeholder="0" onChange={e=>setR(e.target.value)} /></div>
+          </div>
+          <div className="note green"><SVG d={I.check} size={16}/><div>เมื่อบันทึก งานจะถูกทำเครื่องหมายว่าจบแล้ว และย้ายไปแท็บ Achieve พร้อมผล <b>{(g||0)}G {(r||0)}R</b></div></div>
+        </div>
+        <div className="modal-f">
+          <button className="btn" onClick={onClose}>ยกเลิก</button>
+          <button className="btn btn-primary" disabled={busy} onClick={save}><SVG d={I.check} size={15}/>{busy?"กำลังบันทึก…":"บันทึกผล & จบงาน"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== guest detail form (ตามชีต “สรุปรายละเอียดแขก”) ===== */
+const INTEREST=["","สนใจ","ไม่สนใจ"];
+function GuestRow({g, idx, db, onChange, toast, recount, list}){
+  const [f,setF]=useState(g);
+  useEffect(()=>{ setF(g); },[g.id]);
+  const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  const persist=async(patch)=>{ try{ await db.updateGuest(g.id,patch); onChange(); }catch(e){ toast("บันทึกไม่สำเร็จ: "+(e.message||e)); } };
+  const blur=(k)=>{ if((f[k]||"")!==(g[k]||"")) persist({[k]:f[k]}); };
+  const setInt=(v)=>{ set("interested",v); persist({interested:v}); };
+  const toggleReg=async()=>{ const v=!f.registered; set("registered",v);
+    try{ await db.updateGuest(g.id,{registered:v}); await recount(list.map(x=>x.id===g.id?{...x,registered:v}:x)); onChange(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); } };
+  const del=async()=>{ try{ await db.deleteGuest(g.id); await recount(list.filter(x=>x.id!==g.id)); onChange(); toast("ลบแขกแล้ว"); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
+  const cls=f.registered?"reg":(f.interested==="ไม่สนใจ"?"no":"");
+  return (
+    <tr className={cls}>
+      <td className="num">{idx+1}</td>
+      <td><input value={f.guest_name||""} placeholder="ชื่อแขก" onChange={e=>set("guest_name",e.target.value)} onBlur={()=>blur("guest_name")} /></td>
+      <td><input value={f.nickname||""} placeholder="ชื่อเล่น" onChange={e=>set("nickname",e.target.value)} onBlur={()=>blur("nickname")} /></td>
+      <td><input value={f.contact||""} placeholder="เบอร์ติดต่อ" onChange={e=>set("contact",e.target.value)} onBlur={()=>blur("contact")} /></td>
+      <td><input value={f.contact_time||""} placeholder="เวลาสะดวก" onChange={e=>set("contact_time",e.target.value)} onBlur={()=>blur("contact_time")} /></td>
+      <td><input list="rosterlist" value={f.inviter||""} placeholder="ผู้เชิญ" onChange={e=>set("inviter",e.target.value)} onBlur={()=>blur("inviter")} /></td>
+      <td><select className="selint" value={f.interested||""} onChange={e=>setInt(e.target.value)}>
+        {INTEREST.map(o=><option key={o} value={o}>{o||"—"}</option>)}</select></td>
+      <td><input value={f.whats_so||""} placeholder="What's so" onChange={e=>set("whats_so",e.target.value)} onBlur={()=>blur("whats_so")} /></td>
+      <td className="ctr"><input type="checkbox" checked={!!f.registered} onChange={toggleReg} title="ลงทะเบียน" /></td>
+      <td><input value={f.note||""} placeholder="หมายเหตุ" onChange={e=>set("note",e.target.value)} onBlur={()=>blur("note")} /></td>
+      <td className="ctr"><button className="delg" title="ลบแถว" onClick={del}><SVG d={I.trash} size={15}/></button></td>
+    </tr>
+  );
+}
+function GuestModal({home, guests, db, onChange, toast, onClose}){
+  const list=guests.filter(g=>g.home_id===home.id);
+  const [il,setIl]=useState(home.intro_leader||""); const [zm,setZm]=useState(home.zoom_manager||"");
+  const [busy,setBusy]=useState(false);
+  const G=list.length, R=list.filter(g=>g.registered).length;
+  const {day,mo,dow}=fmtDate(home.event_date);
+  const recount=async(arr)=>{ try{ await db.updateHome(home.id,{result_g:arr.length,result_r:arr.filter(x=>x.registered).length}); }catch(e){} };
+  const add=async()=>{ try{ await db.createGuest({home_id:home.id,guest_name:"",nickname:"",contact:"",contact_time:"",inviter:"",interested:"",whats_so:"",registered:false,note:""});
+    await recount([...list,{registered:false}]); onChange(); }catch(e){ toast("เพิ่มไม่สำเร็จ: "+(e.message||e)); } };
+  const saveHdr=async(patch)=>{ try{ await db.updateHome(home.id,patch); onChange(); }catch(e){} };
+  const finish=async()=>{ setBusy(true); try{ await db.updateHome(home.id,{completed:true,result_g:G,result_r:R});
+      toast("บันทึก & จบงานแล้ว → Achieve ("+G+"G "+R+"R)"); onChange(); onClose(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); setBusy(false); } };
+  return (
+    <div className="scrim" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal lg">
+        <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.users} size={18}/></div>
+          <div style={{flex:1}}><h3>สรุปรายละเอียดแขก เข้าฟังการแนะนำ</h3>
+            <p>{home.title||home.host_name} · {dow} {day} {mo}{home.completed?" · จบแล้ว":""}</p></div>
+          <button className="xbtn" onClick={onClose}><SVG d={I.x} size={18}/></button></div>
+        <div className="modal-b">
+          <div className="ghead">
+            <div className="ginfo"><SVG d={I.cal} size={15}/><b>วันที่จัด:</b>&nbsp;{day} {mo} · {home.time_slot||""}</div>
+            <div className="gsum">
+              <div className="b g"><div className="n">{G}</div><div className="l">จำนวนแขก (G)</div></div>
+              <div className="b r"><div className="n">{R}</div><div className="l">ลงทะเบียน (R)</div></div>
+            </div>
+            <div className="field"><label>Introduction Leader</label>
+              <input className="inp" list="rosterlist" value={il} placeholder="เช่น แพรวฟ้า 66" onChange={e=>setIl(e.target.value)} onBlur={()=>il!==(home.intro_leader||"")&&saveHdr({intro_leader:il.trim()||null})} /></div>
+            <div className="field"><label>Zoom Manager</label>
+              <input className="inp" list="rosterlist" value={zm} placeholder="เช่น สปาร์ค63" onChange={e=>setZm(e.target.value)} onBlur={()=>zm!==(home.zoom_manager||"")&&saveHdr({zoom_manager:zm.trim()||null})} /></div>
+          </div>
+          <div className="gwrap" style={{marginTop:14}}>
+            <table className="gtbl">
+              <thead><tr>
+                <th className="num">No.</th><th>ชื่อแขก</th><th>ชื่อเล่น</th><th>เบอร์ติดต่อ</th><th>เวลาสะดวกติดต่อ</th>
+                <th>ผู้เชิญ</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th className="ctr">ลงทะเบียน</th><th>หมายเหตุ</th><th></th>
+              </tr></thead>
+              <tbody>
+                {list.length===0
+                  ? <tr><td colSpan={11} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
+                  : list.map((g,i)=><GuestRow key={g.id} g={g} idx={i} db={db} onChange={onChange} toast={toast} recount={recount} list={list} />)}
+              </tbody>
+            </table>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,flexWrap:"wrap",gap:10}}>
+            <button className="btn btn-sm" onClick={add}><SVG d={I.plus} size={15}/>เพิ่มแขก</button>
+            <div className="lead-sub">รวม <b>{G}</b> แขก · ลงทะเบียน <b>{R}</b> · สนใจ {list.filter(g=>g.interested==="สนใจ").length} · ไม่สนใจ {list.filter(g=>g.interested==="ไม่สนใจ").length}</div>
+          </div>
+        </div>
+        <div className="modal-f">
+          <button className="btn" onClick={onClose}>ปิด (บันทึกอัตโนมัติแล้ว)</button>
+          {!home.completed
+            ? <button className="btn btn-primary" disabled={busy} onClick={finish}><SVG d={I.flag} size={15}/>{busy?"กำลังบันทึก…":"จบงาน + สรุปผล"}</button>
+            : <button className="btn btn-amber" onClick={async()=>{ await saveHdr({completed:false}); toast("เปิดงานกลับมาแล้ว"); }}>เปิดงานกลับ</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== views ===== */
+function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
+  const upcoming=homes.filter(h=>!isArchived(h)).sort((a,b)=>a.event_date.localeCompare(b.event_date));
+  const urgentN=upcoming.filter(h=>{const d=daysUntil(h.event_date);return d>=0&&d<=7;}).length;
+  return (
+    <div className="wrap page">
+      <div className="sec-h">
+        <div><div className="eyebrow">บอร์ดงานที่กำลังจะถึง</div>
+          <h2>เลือกงาน Home แล้วลงชื่อช่วยได้เลย</h2>
+          <p>เห็นทุกงานในหน้าเดียว · {urgentN>0?<b style={{color:"var(--red)"}}>แถบแดง = ภายใน 1 สัปดาห์ ต้องการด่วน ({urgentN} งาน)</b>:"งานที่เลยวันหรือจบแล้วจะย้ายไป Achieve"}</p></div>
+        <button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงาน Home</button>
+      </div>
+      {upcoming.length===0
+        ? <div className="empty"><div className="big"><SVG d={I.cal} size={26}/></div>
+            <h3>ยังไม่มีงานในบอร์ด</h3><p>ให้ผู้จัด Home กดสร้างงานพร้อมวัน เวลา และจำนวน Assist ที่เปิดรับ แล้วทุกคนจะเห็นและมาลงชื่อได้</p>
+            <button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงานแรก</button></div>
+        : <div className="deck">
+            {upcoming.map(h=><EventCard key={h.id} home={h} signups={signups} guests={guests} db={db} onChange={onChange} toast={toast}/>)}
+            <button className="addcard" onClick={onCreate}><div><div className="plus"><SVG d={I.plus} size={22}/></div><b>สร้างงาน Home</b><span>เพิ่มงานใหม่ลงบอร์ด</span></div></button>
+          </div>}
+    </div>
+  );
+}
+
+function ArchiveView({homes, signups, guests, db, onChange, toast}){
+  const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null);
+  const past=homes.filter(isArchived).sort((a,b)=>b.event_date.localeCompare(a.event_date));
+  const totalHelpers=past.reduce((n,h)=>n+signups.filter(s=>s.home_id===h.id).length,0);
+  const done=past.filter(h=>h.completed);
+  const sumG=done.reduce((n,h)=>n+(h.result_g||0),0), sumR=done.reduce((n,h)=>n+(h.result_r||0),0);
+  return (
+    <div className="wrap page">
+      <div className="sec-h"><div><div className="eyebrow">Achieve · งานที่ผ่านมา</div>
+        <h2>บันทึกงานที่ผ่านมาและผลลัพธ์</h2>
+        <p>{past.length} งาน · จบแล้ว {done.length} · ผู้ช่วยรวม {totalHelpers} ครั้ง · รวมผล <b>{sumG}G {sumR}R</b></p></div></div>
+      {past.length===0
+        ? <div className="empty"><div className="big"><SVG d={I.trophy} size={26}/></div><h3>ยังไม่มีงานที่ผ่านมา</h3>
+            <p>เมื่อเลยวันงาน หรือผู้จัดติ๊ก “จบงาน” แล้ว งานจะย้ายมาเก็บที่นี่อัตโนมัติ พร้อมรายชื่อคนที่มาช่วยและผล G/R</p></div>
+        : <div className="deck">
+            {past.map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo,dow}=fmtDate(h.event_date);
+              return (
+                <div className="card past" key={h.id}>
+                  <div className="card-top">
+                    <span className="ribbon done">{h.completed?<><SVG d={I.trophy} size={12}/> สำเร็จ</>:"เลยวันแล้ว"}</span>
+                    <div className="datebig"><span className="d">{day}</span><span className="mo">{mo}</span></div>
+                    <div className="dow">{dow}</div>
+                    <div className="ctitle">{h.title||h.host_name}</div>
+                    {(h.intro_leader||h.zoom_manager) && <div className="meta">
+                      {h.intro_leader && <div className="row"><SVG d={I.star} size={15}/>IL · {h.intro_leader}</div>}
+                      {h.zoom_manager && <div className="row"><SVG d={I.video} size={15}/>ZM · {h.zoom_manager}</div>}
+                    </div>}
+                    <div className="badges"><ChannelBadge channel={h.channel}/>{h.host_group && <span className="badge group"><SVG d={I.user} size={11}/>กลุ่ม {h.host_group}</span>}{h.completed && resultText(h) && <span className="badge result"><SVG d={I.flag} size={11}/>{resultText(h)}</span>}</div>
+                    <div className="host"><span className="ava">{initials(h.host_name)}</span><span className="lbl">ผู้จัด ·&nbsp;</span><b style={{fontWeight:600}}>{h.host_name}</b></div>
+                  </div>
+                  <div className="capbar-wrap"><div className="capbar-head"><span>มาช่วยจริง</span><span><b>{list.length}</b> คน</span></div></div>
+                  <div className="assists">
+                    {list.length===0?<div className="empty-assist">ไม่มีผู้ลงชื่อ</div>
+                      :list.map(s=>(<div className="arow" key={s.id}><span className="ava">{initials(s.assist_name)}</span><span className="nm">{s.assist_name}</span></div>))}
+                  </div>
+                  {db && <div className="card-foot" style={{paddingTop:0,display:"flex",gap:8}}>
+                    <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGuestFor(h)}>
+                      <SVG d={I.users} size={15}/>แขก{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);return gl.length?` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`:"";})()}</button>
+                    <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไข</button>
+                  </div>}
+                </div>
+              ); })}
+          </div>}
+      {guestFor && <GuestModal home={guestFor} guests={guests||[]} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
+      {editFor && <CreateModal home={editFor} db={db} onChange={onChange} toast={toast} onClose={()=>setEditFor(null)} />}
+    </div>
+  );
+}
+
+function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
+  const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null);
+  const hostNames=Array.from(new Set(homes.map(h=>h.host_name))).sort();
+  const mine=q?homes.filter(h=>h.host_name===q).sort((a,b)=>a.event_date.localeCompare(b.event_date)):[];
+  const del=async(h)=>{ if(!window.confirm("ลบงานวันที่ "+h.event_date+" ของ "+h.host_name+"? รายชื่อที่ลงไว้จะถูกลบด้วย")) return;
+    try{ await db.deleteHome(h.id); toast("ลบงานแล้ว"); onChange(); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
+  const reopen=async(h)=>{ try{ await db.updateHome(h.id,{completed:false}); toast("เปิดงานกลับมาแล้ว"); onChange(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); } };
+  return (
+    <div className="wrap page">
+      <div className="sec-h"><div><div className="eyebrow">มุมมอง Host</div>
+        <h2>งานทั้งหมดของคุณ และคนที่ลงชื่อมาช่วย</h2>
+        <p>เลือกชื่อผู้จัด Home · ติ๊กจบงาน + ใส่ผล G/R · ลบงานได้</p></div>
+        <button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงาน Home</button></div>
+      <div className="panel" style={{padding:18}}>
+        <div className="hostpick"><div className="field"><label>เลือก / พิมพ์ชื่อผู้จัด Home</label>
+          <input className="inp" list="hostlist" value={q} placeholder="เช่น วัฒน์69" onChange={e=>setQ(e.target.value)} />
+          <datalist id="hostlist">{hostNames.map(n=><option key={n} value={n}/>)}</datalist></div></div>
+      </div>
+      {!q && <div className="empty" style={{marginTop:16}}><div className="big"><SVG d={I.user} size={26}/></div>
+        <h3>เลือกชื่อผู้จัด Home ด้านบน</h3><p>ระบบจะแสดงทุกงานของคนนั้น ทั้งที่กำลังจะถึงและที่ผ่านมา พร้อมรายชื่อคนที่มาช่วย</p></div>}
+      {q && mine.length===0 && <div className="empty" style={{marginTop:16}}><h3>ยังไม่มีงานของ “{q}”</h3>
+        <p>กดสร้างงาน Home เพื่อเปิดรับ Assist ได้เลย</p><button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงาน</button></div>}
+      {q && mine.length>0 && <div className="hostgrid" style={{marginTop:16}}>
+        {mine.map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo}=fmtDate(h.event_date);
+          return (
+            <div className="hostcard" key={h.id}>
+              <div className="hostcard-h">
+                <div className="hc-date"><div className="d">{day}</div><div className="mo">{mo}</div></div>
+                <div className="hc-main"><h4>{h.title||h.host_name}
+                  {h.completed && <span style={{fontSize:12,color:"var(--green-deep)",fontWeight:600}}> · จบแล้ว{resultText(h)?" ("+resultText(h)+")":""}</span>}
+                  {!h.completed && isPast(h.event_date) && <span style={{fontSize:12,color:"var(--muted)",fontWeight:500}}> · เลยวันแล้ว</span>}</h4>
+                  <div className="sub">{h.host_group?"กลุ่ม "+h.host_group+" · ":""}{h.time_slot||""} · {h.channel||""}{h.address?" · "+h.address:""}</div></div>
+                <div className="hc-count"><div className="n">{list.length}/{h.assists_needed||9}</div><div className="l">Assist</div></div>
+              </div>
+              <div className="hostcard-b">
+                {list.length===0?<span className="empty-assist" style={{padding:"4px 2px"}}>ยังไม่มีใครลงชื่อ</span>
+                  :list.map(s=>(<span className="tagperson" key={s.id}><span className="ava" style={{width:22,height:22}}>{initials(s.assist_name)}</span>{s.assist_name}</span>))}
+                <div style={{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <button className="btn btn-sm btn-amber" onClick={()=>setGuestFor(h)}><SVG d={I.users} size={14}/>รายละเอียดแขก{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);return gl.length?` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`:"";})()}</button>
+                  <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไขงาน</button>
+                  {h.completed ? <button className="btn btn-sm" onClick={()=>reopen(h)}>เปิดงานกลับ</button>
+                    : <button className="btn btn-sm btn-primary" onClick={()=>setCompleteFor(h)}><SVG d={I.flag} size={14}/>จบงาน + ใส่ผล</button>}
+                  <button className="btn btn-sm btn-ghost" title="ลบงาน" onClick={()=>del(h)}><SVG d={I.trash} size={16}/></button>
+                </div>
+              </div>
+            </div>
+          ); })}
+      </div>}
+      {completeFor && <CompleteModal home={completeFor} db={db} onChange={onChange} toast={toast} onClose={()=>setCompleteFor(null)} />}
+      {guestFor && <GuestModal home={guestFor} guests={guests||[]} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
+      {editFor && <CreateModal home={editFor} db={db} onChange={onChange} toast={toast} onClose={()=>setEditFor(null)} />}
+    </div>
+  );
+}
+
+/* ===== dashboard ===== */
+const nrm=(s)=>(s||"").trim().replace(/\s+/g," ")||"—";
+function StatLeaders({title, icon, rows, unit, accent}){
+  const max=Math.max(1,...rows.map(r=>r.val));
+  return (
+    <div className="panel">
+      <h3 style={{display:"flex",alignItems:"center",gap:8}}><SVG d={icon} size={18}/>{title}</h3>
+      <p className="lead">{rows.length} คน · เรียงจากมากไปน้อย</p>
+      {rows.length===0
+        ? <div className="empty-assist">ยังไม่มีข้อมูล</div>
+        : <div className="lead-list">{rows.map((r,i)=>(
+            <div className="lead-row" key={r.name}>
+              <span className={"rank"+(i===0?" g1":i===1?" g2":i===2?" g3":"")}>{i+1}</span>
+              <span className="ava" style={{flex:"0 0 auto"}}>{initials(r.name)}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div className="lead-name">{r.name}</div>
+                {r.sub && <div className="lead-sub">{r.sub}</div>}
+              </div>
+              <div className={"lead-bar"+(accent==="amber"?" amber":"")}><i style={{width:Math.round(r.val/max*100)+"%"}}/></div>
+              <span className="lead-val">{r.val}<small> {unit}</small></span>
+            </div>))}
+          </div>}
+    </div>
+  );
+}
+function DashboardView({homes, signups}){
+  const [q,setQ]=useState("");
+  /* ---- รวมสถิติฝั่งผู้จัด Home ---- */
+  const hostMap={};
+  homes.forEach(h=>{ const k=nrm(h.host_name); const o=hostMap[k]||(hostMap[k]={name:k,homes:0,done:0,g:0,r:0,list:[]});
+    o.homes++; o.list.push(h); if(h.completed){ o.done++; o.g+=(h.result_g||0); o.r+=(h.result_r||0); } });
+  const hostRows=Object.values(hostMap);
+  /* ---- รวมสถิติฝั่งผู้ช่วย Assist ---- */
+  const assistMap={};
+  signups.forEach(s=>{ const k=nrm(s.assist_name); const o=assistMap[k]||(assistMap[k]={name:k,count:0,homeIds:[]});
+    o.count++; o.homeIds.push(s.home_id); });
+  const assistRows=Object.values(assistMap);
+  /* ---- ยอดรวม ---- */
+  const doneHomes=homes.filter(h=>h.completed);
+  const totalG=doneHomes.reduce((n,h)=>n+(h.result_g||0),0);
+  const totalR=doneHomes.reduce((n,h)=>n+(h.result_r||0),0);
+  /* ---- leaderboards ---- */
+  const hostLeaders=hostRows.slice().sort((a,b)=>b.homes-a.homes||b.g-a.g)
+    .map(h=>({name:h.name,val:h.homes,sub:"จบแล้ว "+h.done+" · "+h.g+"G "+h.r+"R"}));
+  const assistLeaders=assistRows.slice().sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name))
+    .map(a=>({name:a.name,val:a.count,sub:null}));
+  const guestLeaders=hostRows.filter(h=>h.g>0).sort((a,b)=>b.g-a.g||b.r-a.r)
+    .map(h=>({name:h.name,val:h.g,sub:h.r+"R · "+h.done+" home"}));
+  /* ---- person lookup ---- */
+  const homeById={}; homes.forEach(h=>homeById[h.id]=h);
+  const allNames=Array.from(new Set([...Object.keys(hostMap),...Object.keys(assistMap)])).sort();
+  const name=nrm(q); const sel=q.trim()?name:"";
+  const pHost=sel?hostMap[sel]:null, pAssist=sel?assistMap[sel]:null;
+  const helped=pAssist?pAssist.homeIds.map(id=>homeById[id]).filter(Boolean)
+    .sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")):[];
+  return (
+    <div className="wrap page">
+      <div className="sec-h"><div><div className="eyebrow">Dashboard · สถิติทีม ILP69</div>
+        <h2>ใครจัด Home · ใคร Assist · ผลรวม Guest / Register</h2>
+        <p>สถิติสะสมจากทุกงานในระบบ · กดดูรายบุคคลได้ที่ช่องค้นหาด้านล่าง</p></div></div>
+      <div className="statgrid">
+        <div className="stat"><div className="k"><SVG d={I.cal} size={15}/>งาน Home ทั้งหมด</div><div className="v">{homes.length}</div><div className="s">จบแล้ว {doneHomes.length} · กำลังจะถึง {homes.length-doneHomes.length}</div></div>
+        <div className="stat amber"><div className="k"><SVG d={I.users} size={15}/>Guest (แขกที่มา)</div><div className="v">{totalG}</div><div className="s">รวมจากงานที่จบแล้ว</div></div>
+        <div className="stat green"><div className="k"><SVG d={I.flag} size={15}/>Register (ลงทะเบียน)</div><div className="v">{totalR}</div><div className="s">รวมจากงานที่จบแล้ว</div></div>
+        <div className="stat"><div className="k"><SVG d={I.user} size={15}/>ผู้จัด Home</div><div className="v">{hostRows.length}</div><div className="s">คนที่เคยเปิดงาน</div></div>
+        <div className="stat"><div className="k"><SVG d={I.star} size={15}/>การลงชื่อ Assist</div><div className="v">{signups.length}</div><div className="s">{assistRows.length} คนไม่ซ้ำ</div></div>
+      </div>
+
+      <div className="panel" style={{padding:18,marginBottom:18}}>
+        <div className="hostpick"><div className="field"><label><SVG d={I.search} size={13}/> ดูสถิติรายบุคคล — เลือก/พิมพ์ชื่อ</label>
+          <input className="inp" list="dashnames" value={q} placeholder="เช่น เป้ 69 หรือ วัฒน์" onChange={e=>setQ(e.target.value)} />
+          <datalist id="dashnames">{allNames.map(n=><option key={n} value={n}/>)}</datalist></div>
+          {q && <button className="btn btn-sm" style={{alignSelf:"flex-end"}} onClick={()=>setQ("")}>ล้าง</button>}
+        </div>
+        {sel && !pHost && !pAssist && <div className="empty-assist" style={{textAlign:"left",paddingTop:12}}>ไม่พบสถิติของ “{sel}” — ลองเลือกชื่อจากรายการ</div>}
+        {(pHost||pAssist) && <div style={{marginTop:16}}>
+          <div className="phead"><span className="ava">{initials(sel)}</span>
+            <div><h3>{sel}</h3><div className="role">
+              {pHost?("ผู้จัด Home "+pHost.homes+" งาน"):"ยังไม่เคยจัด Home"}
+              {" · "}{pAssist?("ช่วยงาน "+pAssist.count+" ครั้ง"):"ยังไม่เคยลงชื่อช่วย"}</div></div></div>
+          <div className="profile">
+            <div className="pbox"><div className="pv">{pHost?pHost.homes:0}</div><div className="pl">จัด Home (ครั้ง)</div></div>
+            <div className="pbox"><div className="pv">{pHost?pHost.g:0}</div><div className="pl">Guest รวม</div></div>
+            <div className="pbox"><div className="pv">{pHost?pHost.r:0}</div><div className="pl">Register รวม</div></div>
+            <div className="pbox"><div className="pv">{pAssist?pAssist.count:0}</div><div className="pl">Assist (ครั้ง)</div></div>
+          </div>
+          {pHost && pHost.list.length>0 && <div style={{marginTop:16}}>
+            <div className="lead-sub" style={{marginBottom:6,fontWeight:600}}>งาน Home ที่จัด</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+              {pHost.list.slice().sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")).map(h=>{
+                const {day,mo}=fmtDate(h.event_date);
+                return <span className="tagperson" key={h.id}><SVG d={I.cal} size={13}/>{day} {mo}{h.completed?" · "+resultText(h):" · รอจัด"}</span>; })}
+            </div></div>}
+          {helped.length>0 && <div style={{marginTop:16}}>
+            <div className="lead-sub" style={{marginBottom:6,fontWeight:600}}>เคยไปช่วยงานของ</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+              {helped.map((h,i)=>{ const {day,mo}=fmtDate(h.event_date);
+                return <span className="tagperson" key={h.id+"_"+i}><span className="ava" style={{width:22,height:22}}>{initials(h.host_name)}</span>{h.host_name} · {day} {mo}</span>; })}
+            </div></div>}
+        </div>}
+      </div>
+
+      <div className="dash-cols">
+        <StatLeaders title="จัด Home มากสุด" icon={I.trophy} rows={hostLeaders} unit="งาน" />
+        <StatLeaders title="Assist มากสุด" icon={I.star} rows={assistLeaders} unit="ครั้ง" accent="amber" />
+      </div>
+      <div style={{marginTop:18}}>
+        <StatLeaders title="ทำ Guest ได้มากสุด (ต่อผู้จัด)" icon={I.users} rows={guestLeaders} unit="คน" />
+      </div>
+    </div>
+  );
+}
+
+/* ===== settings ===== */
+const SQL_SETUP=`-- ILP69 Home · สร้างตารางใน Supabase (รันครั้งเดียวที่ SQL Editor)
+create table if not exists public.ilp69_homes (
+  id uuid primary key default gen_random_uuid(),
+  host_name text not null,
+  host_group int,
+  title text,
+  event_date date not null,
+  time_slot text,
+  channel text,
+  address text,
+  assists_needed int not null default 9,
+  completed boolean not null default false,
+  result_g int,
+  result_r int,
+  host_contact text,
+  note text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.ilp69_signups (
+  id uuid primary key default gen_random_uuid(),
+  home_id uuid not null references public.ilp69_homes(id) on delete cascade,
+  assist_name text not null,
+  cohort text,
+  contact text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.ilp69_guests (
+  id uuid primary key default gen_random_uuid(),
+  home_id uuid not null references public.ilp69_homes(id) on delete cascade,
+  guest_name text,
+  nickname text,
+  contact text,
+  contact_time text,
+  inviter text,
+  interested text,
+  whats_so text,
+  registered boolean not null default false,
+  note text,
+  created_at timestamptz not null default now()
+);
+
+-- เพิ่มคอลัมน์ผู้นำการแนะนำ / Zoom Manager (ปลอดภัยถ้ามีอยู่แล้ว)
+alter table public.ilp69_homes add column if not exists intro_leader text;
+alter table public.ilp69_homes add column if not exists zoom_manager text;
+
+create index if not exists ilp69_signups_home_idx on public.ilp69_signups(home_id);
+create index if not exists ilp69_guests_home_idx  on public.ilp69_guests(home_id);
+create index if not exists ilp69_homes_date_idx on public.ilp69_homes(event_date);
+
+alter table public.ilp69_homes  enable row level security;
+alter table public.ilp69_signups enable row level security;
+alter table public.ilp69_guests  enable row level security;
+
+create policy "homes_read"   on public.ilp69_homes   for select using (true);
+create policy "homes_write"  on public.ilp69_homes   for insert with check (true);
+create policy "homes_update" on public.ilp69_homes   for update using (true) with check (true);
+create policy "homes_delete" on public.ilp69_homes   for delete using (true);
+create policy "su_read"   on public.ilp69_signups for select using (true);
+create policy "su_write"  on public.ilp69_signups for insert with check (true);
+create policy "su_update" on public.ilp69_signups for update using (true) with check (true);
+create policy "su_delete" on public.ilp69_signups for delete using (true);
+create policy "gu_read"   on public.ilp69_guests for select using (true);
+create policy "gu_write"  on public.ilp69_guests for insert with check (true);
+create policy "gu_update" on public.ilp69_guests for update using (true) with check (true);
+create policy "gu_delete" on public.ilp69_guests for delete using (true);`;
+
+function SettingsView({cfg, onConnect, onDisconnect, db, toast, onChange}){
+  const mode=db.mode;
+  const [url,setUrl]=useState(cfg?.url||""); const [key,setKey]=useState(cfg?.key||"");
+  const [testing,setTesting]=useState(false); const [importing,setImporting]=useState(false);
+  const copy=()=>{ navigator.clipboard.writeText(SQL_SETUP).then(()=>toast("คัดลอก SQL แล้ว")); };
+  const test=async()=>{ if(!url.trim()||!key.trim()){ toast("ใส่ URL และ key ก่อน"); return; } setTesting(true);
+    try{ const sb=window.supabase.createClient(url.trim(),key.trim());
+      const {error}=await sb.from("ilp69_homes").select("id").limit(1); if(error) throw error;
+      saveCfg(url,key); toast("เชื่อมต่อสำเร็จ ✦ ใช้งานแบบแชร์ได้แล้ว"); onConnect();
+    }catch(e){ toast("เชื่อมต่อไม่ได้: "+(e.message||e)); } setTesting(false); };
+  const doImport=async()=>{ try{ const n=await db.countHomes();
+      if(n>0 && !window.confirm("ในฐานข้อมูลมี "+n+" งานอยู่แล้ว — นำเข้าเพิ่มอีก "+SEED.length+" งานจากตาราง ILP69? (อาจซ้ำได้)")) return;
+      if(n===0 && !window.confirm("นำเข้า "+SEED.length+" งานจากตาราง ILP69 เข้าฐานข้อมูล?")) return;
+      setImporting(true); await importSeed(db); toast("นำเข้า "+SEED.length+" งานเรียบร้อย"); onChange();
+    }catch(e){ toast("นำเข้าไม่สำเร็จ: "+(e.message||e)); } setImporting(false); };
+  return (
+    <div className="wrap page" style={{maxWidth:760}}>
+      <div className="sec-h"><div><div className="eyebrow">ตั้งค่า</div>
+        <h2>เชื่อมต่อฐานข้อมูลกลาง (Supabase)</h2><p>ต่อแล้วทุกคนจะเห็นข้อมูลชุดเดียวกันและอัปเดตสด</p></div></div>
+      <div className="panel"><div className={"note "+(mode==="live"?"green":"")}>
+        <SVG d={mode==="live"?I.check:I.clock} size={18}/>
+        <div>{mode==="live"? <b>กำลังใช้งานแบบแชร์จริง (Supabase) — ข้อมูลซิงก์ให้ทุกคน</b>
+          : <><b>ตอนนี้อยู่ในโหมดทดลอง</b> — มีข้อมูล {SEED.length} งานจากตาราง ILP69 ให้ดูแล้ว แต่เก็บในเครื่องนี้เท่านั้น เชื่อมต่อ Supabase ด้านล่างเพื่อใช้งานจริง</>}</div></div></div>
+      <div className="panel">
+        <h3>ขั้นตอนติดตั้ง (ครั้งเดียว)</h3><p className="lead">ทำตาม 3 ขั้น แล้ววางลิงก์แอปส่งให้ทีมได้เลย</p>
+        <ol className="steps">
+          <li>เปิดโปรเจกต์ Supabase → <b>SQL Editor</b> → วางสคริปต์ → กด <b>Run</b></li>
+          <li><b>Project Settings → API</b> คัดลอก <b>Project URL</b> และ <b>anon / publishable key</b></li>
+          <li>วางด้านล่าง → กด <b>เชื่อมต่อ</b> → (ถ้าต้องการ) กด <b>นำเข้าข้อมูล ILP69</b></li>
+        </ol>
+        <div style={{position:"relative",marginTop:6}}>
+          <button className="btn btn-sm" style={{position:"absolute",top:10,right:10,zIndex:2}} onClick={copy}>คัดลอก SQL</button>
+          <pre className="sql">{SQL_SETUP}</pre></div>
+      </div>
+      <div className="panel">
+        <h3>ใส่ค่าการเชื่อมต่อ</h3><p className="lead">anon/publishable key เปิดเผยได้ตามปกติ ปลอดภัยด้วย RLS</p>
+        <div className="field" style={{marginBottom:12}}><label>Project URL</label>
+          <input className="inp" value={url} placeholder="https://xxxxx.supabase.co" onChange={e=>setUrl(e.target.value)} /></div>
+        <div className="field" style={{marginBottom:16}}><label>anon / publishable key</label>
+          <input className="inp" value={key} placeholder="sb_publishable_... หรือ eyJ..." onChange={e=>setKey(e.target.value)} /></div>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          <button className="btn btn-primary" disabled={testing} onClick={test}><SVG d={I.check} size={15}/>{testing?"กำลังทดสอบ…":"ทดสอบ & เชื่อมต่อ"}</button>
+          {mode==="live" && <button className="btn btn-amber" disabled={importing} onClick={doImport}>{importing?"กำลังนำเข้า…":"นำเข้าข้อมูล ILP69 ("+SEED.length+" งาน)"}</button>}
+          {mode==="live" && <button className="btn" onClick={()=>{clearCfg();onDisconnect();toast("ตัดการเชื่อมต่อแล้ว");}}>ตัดการเชื่อมต่อ</button>}
+        </div>
+      </div>
+      <div className="panel">
+        <h3>นำไปใช้งานจริง (Deploy)</h3>
+        <ul style={{margin:0,paddingLeft:18,color:"var(--ink-soft)",fontSize:14,lineHeight:1.8}}>
+          <li><b>Vercel / Netlify / GitHub Pages</b> — อัปโหลด index.html ไฟล์เดียวก็ใช้ได้</li>
+          <li>ไม่อยากให้แต่ละคนตั้งค่าเอง — ใส่ค่าในตัวแปร <b>HARDCODED_URL / HARDCODED_KEY</b> ต้นไฟล์</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/* ===== app shell ===== */
+function App(){
+  const [cfg,setCfg]=useState(loadCfg());
+  const [db,setDb]=useState(()=>{ const c=loadCfg(); return c?makeSupabaseDB(c):makeDemoDB(); });
+  const [tab,setTab]=useState("board");
+  const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]);
+  const [loading,setLoading]=useState(true); const [showCreate,setShowCreate]=useState(false);
+  const [toastMsg,setToastMsg]=useState(""); const toastT=useRef();
+  const toast=useCallback((m)=>{ setToastMsg(m); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToastMsg(""),2600); },[]);
+  const refresh=useCallback(async()=>{ try{ const [h,s,g]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests()]); setHomes(h); setSignups(s); setGuests(g); }
+    catch(e){ toast("โหลดข้อมูลไม่สำเร็จ: "+(e.message||e)); } setLoading(false); },[db,toast]);
+  useEffect(()=>{ setLoading(true); refresh(); const off=db.subscribe(()=>refresh()); return off; },[db,refresh]);
+  useEffect(()=>{ const f=()=>refresh(); window.addEventListener("focus",f); const iv=setInterval(refresh,20000);
+    return ()=>{window.removeEventListener("focus",f);clearInterval(iv);}; },[refresh]);
+  const connect=()=>{ const c=loadCfg(); setCfg(c); setDb(makeSupabaseDB(c)); setTab("board"); };
+  const disconnect=()=>{ setCfg(null); setDb(makeDemoDB()); };
+  const upcomingN=homes.filter(h=>!isArchived(h)).length, pastN=homes.filter(isArchived).length;
+  const TABS=[{id:"board",label:"บอร์ด",n:upcomingN},{id:"archive",label:"Achieve",n:pastN},{id:"dash",label:"Dashboard"},{id:"host",label:"มุมมอง Host"},{id:"settings",label:"ตั้งค่า"}];
+  return (
+    <div>
+      <datalist id="rosterlist">{HOST_ROSTER.map(n=><option key={n} value={n}/>)}</datalist>
+      <div className="topbar">
+        <div className="topbar-in">
+          <div className="brand"><div className="mark"><div><b>69</b><small>ILP</small></div></div>
+            <div className="brand-txt"><h1>ILP69 Home · บอร์ดลงชื่อ Assist</h1><p>ผู้จัด Home เปิดงาน · ทีมงานมาลงชื่อช่วยกัน</p></div></div>
+          <div className="status"><span className={"dot"+(db.mode==="live"?" live":"")}></span>{db.mode==="live"?"แชร์สด":"โหมดทดลอง"}</div>
+        </div>
+        <div className="tabs">{TABS.map(t=>(
+          <button key={t.id} className="tab" aria-selected={tab===t.id} onClick={()=>setTab(t.id)}>{t.label}{typeof t.n==="number"&&<span className="pill">{t.n}</span>}</button>))}</div>
+        <div className="tabsep"></div>
+      </div>
+      {loading
+        ? <div className="wrap page"><div className="deck">{[0,1,2,3].map(i=>
+            <div className="card" key={i} style={{padding:18}}>
+              <div className="skeleton" style={{height:34,width:90,marginBottom:10}}/>
+              <div className="skeleton" style={{height:14,width:"70%",marginBottom:8}}/>
+              <div className="skeleton" style={{height:14,width:"50%",marginBottom:18}}/>
+              <div className="skeleton" style={{height:44,width:"100%"}}/></div>)}</div></div>
+        : <>
+            {tab==="board"   && <BoardView   homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
+            {tab==="archive" && <ArchiveView homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} />}
+            {tab==="dash"    && <DashboardView homes={homes} signups={signups} guests={guests} />}
+            {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
+            {tab==="settings"&& <SettingsView cfg={cfg} db={db} onConnect={connect} onDisconnect={disconnect} toast={toast} onChange={refresh} />}
+          </>}
+      {showCreate && <CreateModal db={db} onChange={refresh} toast={toast} onClose={()=>setShowCreate(false)} />}
+      <Toast msg={toastMsg} />
+      <div className="footer"><span>ILP69 Home Assist Board</span>
+        <span>{db.mode==="live"?"เชื่อมต่อฐานข้อมูลกลางแล้ว":"โหมดทดลอง · ไปที่ ตั้งค่า เพื่อเปิดใช้แบบแชร์"}</span></div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
