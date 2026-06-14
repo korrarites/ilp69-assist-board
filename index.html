@@ -237,6 +237,11 @@
   .nm-edit{border:1px solid transparent;background:transparent;flex:1;min-width:0;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink);padding:3px 6px;border-radius:7px}
   .nm-edit:hover{border-color:var(--line)}
   .nm-edit:focus{outline:none;background:#fff;border-color:var(--green);box-shadow:0 0 0 3px var(--green-tint)}
+  /* ===== shared-card focus highlight ===== */
+  .card{scroll-margin-top:104px}
+  @keyframes flashring{0%,100%{box-shadow:var(--shadow)}18%,62%{box-shadow:0 0 0 3px var(--green), var(--shadow-lg)}}
+  .card.flash{animation:flashring 1.5s ease-out}
+  .share-ic{flex:0 0 auto;width:38px;padding:0;justify-content:center}
   .skeleton{background:linear-gradient(90deg,#eee,#f6f5f0,#eee);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:8px}
   @keyframes sk{to{background-position:-200% 0}}
   .footer{max-width:1180px;margin:0 auto;padding:24px 20px 40px;color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line)}
@@ -380,6 +385,11 @@ function fmtDate(s){ const d=new Date(s+"T00:00:00");
   return { day:d.getDate(), mo:new Intl.DateTimeFormat("th-TH",{month:"short"}).format(d), dow:new Intl.DateTimeFormat("th-TH",{weekday:"long"}).format(d) }; }
 function initials(n){ n=(n||"").trim(); return n?n.slice(0,1):"?"; }
 function resultText(h){ if(h.result_g==null&&h.result_r==null) return ""; return (h.result_g||0)+"G "+(h.result_r||0)+"R"; }
+function cardLink(id){ return location.origin+location.pathname+"#home="+id; }
+async function shareHome(home, toast){ const url=cardLink(home.id); const title=(home.title||home.host_name)+" · ILP69 Home";
+  if(navigator.share){ try{ await navigator.share({title,url}); return; }catch(e){ if(e&&e.name==="AbortError") return; } }
+  try{ await navigator.clipboard.writeText(url); toast("คัดลอกลิงก์การ์ดแล้ว — แชร์ได้เลย ✦"); }
+  catch(e){ window.prompt("คัดลอกลิงก์นี้เพื่อแชร์:", url); } }
 function SVG({d,size=16,sw=1.7}){ return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{d}</svg>; }
 const I={
   clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
@@ -391,6 +401,7 @@ const I={
   trophy:<><path d="M7 4h10v3a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M9 14h6M8 20h8M12 14v6"/></>,
   trash:<><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></>, cal:<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></>,
   flag:<><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></>, bolt:<><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></>,
+  share:<><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 13.4 7.4 4.2M15.7 6.4 8.3 10.6"/></>,
   chart:<><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></>,
   star:<><path d="M12 3.2l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.5l-5.2 2.7 1-5.8L3.6 9.3l5.8-.8z"/></>,
   search:<><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></>,
@@ -477,7 +488,7 @@ function EventCard({home, signups, guests, db, onChange, toast}){
     setOpen(false); toast("ลงชื่อเรียบร้อย ✦ ขอบคุณที่มาช่วยกัน"); onChange(); }catch(e){ toast("บันทึกไม่สำเร็จ: "+(e.message||e)); } };
   const remove=async(id)=>{ try{ await db.deleteSignup(id); toast("ถอนชื่อแล้ว"); onChange(); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
   return (
-    <div className={"card"+(past?" past":"")+(urgent?" urgent-card":"")}>
+    <div className={"card"+(past?" past":"")+(urgent?" urgent-card":"")} id={"home-"+home.id}>
       {urgent && <div className="urgent"><SVG d={I.bolt} size={14}/>ต้องการด่วน · {urgentLabel(home.event_date)}</div>}
       <div className="card-top">
         <span className={"ribbon "+(past?"done":(isFull?"full":"open"))}>{past?"จบแล้ว":(isFull?"ครบแล้ว":"ว่าง "+(need-filled))}</span>
@@ -512,8 +523,11 @@ function EventCard({home, signups, guests, db, onChange, toast}){
         {open ? <SignForm full={isFull} onSubmit={add} onCancel={()=>setOpen(false)}/>
           : <button className="btn btn-amber" style={{width:"100%",justifyContent:"center"}} onClick={()=>setOpen(true)}>
               <SVG d={I.plus} size={16}/>{isFull?"ลงชื่อเป็นสำรอง":"ลงชื่อช่วยงาน"}</button>}
-        <button className="btn btn-ghost btn-sm" style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>setGOpen(true)}>
-          <SVG d={I.users} size={15}/>รายละเอียดแขก{glist.length>0?` · ${glist.length}G ${glist.filter(g=>g.registered).length}R`:" / สรุป G·R"}</button>
+        <div style={{display:"flex",gap:8,marginTop:8}}>
+          <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGOpen(true)}>
+            <SVG d={I.users} size={15}/>รายละเอียดแขก{glist.length>0?` · ${glist.length}G ${glist.filter(g=>g.registered).length}R`:" / สรุป G·R"}</button>
+          <button className="btn btn-ghost btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(home,toast)}><SVG d={I.share} size={15}/></button>
+        </div>
       </div>}
       {gOpen && <GuestModal home={home} guests={guests||[]} db={db} onChange={onChange} toast={toast} onClose={()=>setGOpen(false)} />}
     </div>
@@ -757,7 +771,7 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
         : <div className="deck">
             {past.map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo,dow}=fmtDate(h.event_date);
               return (
-                <div className="card past" key={h.id}>
+                <div className="card past" key={h.id} id={"home-"+h.id}>
                   <div className="card-top">
                     <span className="ribbon done">{h.completed?<><SVG d={I.trophy} size={12}/> สำเร็จ</>:"เลยวันแล้ว"}</span>
                     <div className="datebig"><span className="d">{day}</span><span className="mo">{mo}</span></div>
@@ -778,6 +792,7 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
                     <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGuestFor(h)}>
                       <SVG d={I.users} size={15}/>แขก{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);return gl.length?` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`:"";})()}</button>
                     <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไข</button>
+                    <button className="btn btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(h,toast)}><SVG d={I.share} size={15}/></button>
                   </div>}
                 </div>
               ); })}
@@ -1089,6 +1104,8 @@ function App(){
   const [tab,setTab]=useState("board");
   const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]);
   const [loading,setLoading]=useState(true); const [showCreate,setShowCreate]=useState(false);
+  const [focusId,setFocusId]=useState(()=>{ const m=(window.location.hash||"").match(/home=([\w-]+)/); return m?m[1]:null; });
+  const focusedRef=useRef(false);
   const [toastMsg,setToastMsg]=useState(""); const toastT=useRef();
   const toast=useCallback((m)=>{ setToastMsg(m); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToastMsg(""),2600); },[]);
   const refresh=useCallback(async()=>{ try{ const [h,s,g]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests()]); setHomes(h); setSignups(s); setGuests(g); }
@@ -1096,6 +1113,15 @@ function App(){
   useEffect(()=>{ setLoading(true); refresh(); const off=db.subscribe(()=>refresh()); return off; },[db,refresh]);
   useEffect(()=>{ const f=()=>refresh(); window.addEventListener("focus",f); const iv=setInterval(refresh,20000);
     return ()=>{window.removeEventListener("focus",f);clearInterval(iv);}; },[refresh]);
+  useEffect(()=>{ const onHash=()=>{ const m=(window.location.hash||"").match(/home=([\w-]+)/); if(m){ focusedRef.current=false; setFocusId(m[1]); } };
+    window.addEventListener("hashchange",onHash); return ()=>window.removeEventListener("hashchange",onHash); },[]);
+  useEffect(()=>{ if(loading||!focusId||focusedRef.current) return;
+    const h=homes.find(x=>x.id===focusId); if(!h){ return; } focusedRef.current=true;
+    setTab(isArchived(h)?"archive":"board");
+    const t=setTimeout(()=>{ const el=document.getElementById("home-"+focusId);
+      if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"),1700); }
+    },450); return ()=>clearTimeout(t);
+  },[loading,focusId,homes]);
   const connect=()=>{ const c=loadCfg(); setCfg(c); setDb(makeSupabaseDB(c)); setTab("board"); };
   const disconnect=()=>{ setCfg(null); setDb(makeDemoDB()); };
   const upcomingN=homes.filter(h=>!isArchived(h)).length, pastN=homes.filter(isArchived).length;
