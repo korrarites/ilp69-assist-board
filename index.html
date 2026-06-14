@@ -86,6 +86,12 @@
   .badge.onsite{background:var(--amber-tint);color:#8a5512;border-color:#EAD9B0}
   .badge.result{background:#0E211C;color:#D9EDE6;border-color:#0E211C}
   .badge.group{background:#ECEAF7;color:#4B3F8F;border-color:#D9D4F0}
+  .badge.k-home{background:var(--green-tint);color:var(--green-deep);border-color:#CDE6DD}
+  .badge.k-event{background:#EDE7FB;color:#5B3FAE;border-color:#DCD2F4}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+  .segbtn{border:none;background:transparent;padding:8px 20px;border-radius:9px;font-weight:600;font-size:14px;color:var(--ink-soft);display:inline-flex;align-items:center;gap:7px}
+  .segbtn.on{background:#fff;color:var(--green-deep);box-shadow:var(--shadow)}
+  .segbtn.on.ev{color:#5B3FAE}
   .host{display:inline-flex;align-items:center;gap:7px;margin-top:11px;font-size:13px}
   .host .lbl{color:var(--muted)}
   .ava{width:24px;height:24px;border-radius:50%;background:var(--green-tint);color:var(--green-deep);display:grid;place-items:center;font-weight:700;font-size:11px;font-family:"Bai Jamjuree"}
@@ -321,7 +327,7 @@ const SEED=[
 ];
 
 /* ===== DATA LAYER ===== */
-function rowFromSeed(r){ return { host_name:r.host, host_group:(r.group==null?null:r.group), title:null, event_date:r.date, time_slot:r.slot, channel:"Online-Zoom",
+function rowFromSeed(r){ return { host_name:r.host, host_group:(r.group==null?null:r.group), title:null, kind:"Home", event_date:r.date, time_slot:r.slot, channel:"Online-Zoom",
   address:r.address||null, assists_needed:9, completed:!!r.completed, result_g:(r.g==null?null:r.g), result_r:(r.r==null?null:r.r), host_contact:null, note:null }; }
 function makeSupabaseDB(cfg){
   const sb=window.supabase.createClient(cfg.url,cfg.key);
@@ -506,8 +512,8 @@ function EventCard({home, signups, guests, db, onChange, toast}){
           {home.address && <div className="row"><SVG d={I.pin} size={15}/>{home.address}</div>}
           {home.host_contact && <div className="row"><SVG d={I.phone} size={15}/>{home.host_contact}</div>}
         </div>
-        <div className="badges"><ChannelBadge channel={home.channel}/></div>
-        <div className="host"><span className="ava">{initials(home.host_name)}</span><span className="lbl">ผู้จัด Home ·&nbsp;</span><b style={{fontWeight:600}}>{home.host_name}</b></div>
+        <div className="badges"><span className={"badge "+((home.kind||"Home")==="Event"?"k-event":"k-home")}><SVG d={(home.kind||"Home")==="Event"?I.star:I.cal} size={11}/>{home.kind||"Home"}</span><ChannelBadge channel={home.channel}/></div>
+        <div className="host"><span className="ava">{initials(home.host_name)}</span><span className="lbl">{(home.kind||"Home")==="Event"?"ผู้จัด Event ·":"ผู้จัด Home ·"}&nbsp;</span><b style={{fontWeight:600}}>{home.host_name}</b></div>
         <HomeInfo home={home}/>
       </div>
       <div className="capbar-wrap">
@@ -545,17 +551,17 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
   const edit=!!home;
   const knownSlot=edit&&TIME_SLOTS.includes(home.time_slot);
   const [f,setF]=useState(edit
-    ? {host_name:home.host_name||"",host_group:home.host_group==null?"":String(home.host_group),title:home.title||"",
+    ? {host_name:home.host_name||"",host_group:home.host_group==null?"":String(home.host_group),title:home.title||"",kind:home.kind||"Home",
        event_date:home.event_date||"",time_slot:knownSlot?home.time_slot:"อื่นๆ",slotOther:knownSlot?"":(home.time_slot||""),
        channel:home.channel||"Online-Zoom",address:home.address||"",assists_needed:home.assists_needed||9,
        host_contact:home.host_contact||"",note:home.note||"",intro_leader:home.intro_leader||"",zoom_manager:home.zoom_manager||""}
-    : {host_name:defaultHost||"",host_group:"",title:"",event_date:"",time_slot:SLOT_EVENING,slotOther:"",
+    : {host_name:defaultHost||"",host_group:"",title:"",kind:"Home",event_date:"",time_slot:SLOT_EVENING,slotOther:"",
        channel:"Online-Zoom",address:"",assists_needed:9,host_contact:"",note:"",intro_leader:"",zoom_manager:""});
   const [busy,setBusy]=useState(false); const set=(k,v)=>setF(s=>({...s,[k]:v}));
   const onsite=/onsite/i.test(f.channel); const ok=f.host_name.trim()&&f.event_date;
   const save=async()=>{ if(!ok) return; setBusy(true);
     try{ const slot=f.time_slot==="อื่นๆ"?(f.slotOther.trim()||"อื่นๆ"):f.time_slot;
-      const payload={ host_name:f.host_name.trim(), host_group:(f.host_group===""?null:parseInt(f.host_group)), title:f.title.trim()||null, event_date:f.event_date, time_slot:slot,
+      const payload={ host_name:f.host_name.trim(), host_group:(f.host_group===""?null:parseInt(f.host_group)), title:f.title.trim()||null, kind:f.kind||"Home", event_date:f.event_date, time_slot:slot,
         channel:f.channel, address:f.address.trim()||null, assists_needed:Math.min(9,Math.max(1,parseInt(f.assists_needed)||9)),
         host_contact:f.host_contact.trim()||null, note:f.note.trim()||null, intro_leader:f.intro_leader.trim()||null, zoom_manager:f.zoom_manager.trim()||null };
       if(edit){ await db.updateHome(home.id,payload); toast("บันทึกการแก้ไขแล้ว"); }
@@ -568,8 +574,13 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
         <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.cal} size={18}/></div>
           <div><h3>{edit?"แก้ไขงาน Home":"สร้างงาน Home Intro"}</h3><p>{edit?"ปรับแก้รายละเอียดงานนี้ได้ทั้งหมด แม้งานจะผ่านไปแล้ว":"เลือกผู้จัด วัน เวลา ช่องทาง และจำนวน Assist"}</p></div></div>
         <div className="modal-b">
+          <div className="field"><label>ประเภทงาน</label>
+            <div className="seg">
+              <button type="button" className={"segbtn"+(f.kind==="Home"?" on":"")} onClick={()=>set("kind","Home")}><SVG d={I.cal} size={15}/>Home</button>
+              <button type="button" className={"segbtn ev"+(f.kind==="Event"?" on":"")} onClick={()=>set("kind","Event")}><SVG d={I.star} size={15}/>Event</button>
+            </div></div>
           <div className="two">
-            <div className="field"><label>ผู้จัด Home (Host) *</label>
+            <div className="field"><label>{f.kind==="Event"?"ผู้จัด Event (Host) *":"ผู้จัด Home (Host) *"}</label>
               <input className="inp" list="rosterlist" value={f.host_name} placeholder="พิมพ์/เลือกชื่อ เช่น เอก กรฤต" onChange={e=>set("host_name",e.target.value)} /></div>
             <div className="field"><label>กลุ่ม (1–16)</label>
               <select className="sel" value={f.host_group} onChange={e=>set("host_group",e.target.value)}>
@@ -738,7 +749,7 @@ function GuestModal({home, guests, db, onChange, toast, onClose}){
 
 /* ===== views ===== */
 function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
-  const [fPerson,setFPerson]=useState(""); const [fGroup,setFGroup]=useState(""); const [fDate,setFDate]=useState("");
+  const [fPerson,setFPerson]=useState(""); const [fGroup,setFGroup]=useState(""); const [fDate,setFDate]=useState(""); const [fKind,setFKind]=useState("");
   const upcoming=homes.filter(h=>!isArchived(h)).sort((a,b)=>a.event_date.localeCompare(b.event_date));
   const urgentN=upcoming.filter(h=>{const d=daysUntil(h.event_date);return d>=0&&d<=7;}).length;
   /* ตัวเลือกตัวกรอง (จากงานในบอร์ดเท่านั้น) */
@@ -746,14 +757,15 @@ function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
   const people=Array.from(new Set([...upcoming.map(h=>h.host_name), ...signups.filter(s=>upIds.has(s.home_id)).map(s=>nrm(s.assist_name))])).filter(Boolean).sort();
   const groups=Array.from(new Set(upcoming.map(h=>h.host_group).filter(g=>g!=null))).sort((a,b)=>a-b);
   const dates=Array.from(new Set(upcoming.map(h=>h.event_date))).sort();
-  const active=fPerson||fGroup||fDate;
+  const active=fPerson||fGroup||fDate||fKind;
   const filtered=upcoming.filter(h=>{
+    if(fKind && (h.kind||"Home")!==fKind) return false;
     if(fGroup && String(h.host_group||"")!==fGroup) return false;
     if(fDate && h.event_date!==fDate) return false;
     if(fPerson){ const isHost=h.host_name===fPerson; const isAssist=signups.some(s=>s.home_id===h.id && nrm(s.assist_name)===fPerson); if(!isHost&&!isAssist) return false; }
     return true;
   });
-  const clear=()=>{ setFPerson(""); setFGroup(""); setFDate(""); };
+  const clear=()=>{ setFPerson(""); setFGroup(""); setFDate(""); setFKind(""); };
   return (
     <div className="wrap page">
       <div className="sec-h">
@@ -768,6 +780,11 @@ function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
             <button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงานแรก</button></div>
         : <>
           <div className="filterbar">
+            <div className="field"><label><SVG d={I.flag} size={13}/>ประเภท</label>
+              <select className="sel" value={fKind} onChange={e=>setFKind(e.target.value)}>
+                <option value="">— ทั้งหมด —</option>
+                <option value="Home">Home</option>
+                <option value="Event">Event</option></select></div>
             <div className="field"><label><SVG d={I.user} size={13}/>คน (ผู้จัด / ผู้ช่วย)</label>
               <select className="sel" value={fPerson} onChange={e=>setFPerson(e.target.value)}>
                 <option value="">— ทุกคน —</option>
@@ -819,7 +836,7 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
                     <div className="datebig"><span className="d">{day}</span><span className="mo">{mo}</span></div>
                     <div className="dow">{dow}</div>
                     <div className="ctitle">{h.title||h.host_name}</div>
-                    <div className="badges"><ChannelBadge channel={h.channel}/>{h.completed && resultText(h) && <span className="badge result"><SVG d={I.flag} size={11}/>{resultText(h)}</span>}</div>
+                    <div className="badges"><span className={"badge "+((h.kind||"Home")==="Event"?"k-event":"k-home")}><SVG d={(h.kind||"Home")==="Event"?I.star:I.cal} size={11}/>{h.kind||"Home"}</span><ChannelBadge channel={h.channel}/>{h.completed && resultText(h) && <span className="badge result"><SVG d={I.flag} size={11}/>{resultText(h)}</span>}</div>
                     <div className="host"><span className="ava">{initials(h.host_name)}</span><span className="lbl">ผู้จัด ·&nbsp;</span><b style={{fontWeight:600}}>{h.host_name}</b></div>
                     <HomeInfo home={h}/>
                   </div>
@@ -941,6 +958,10 @@ function DashboardView({homes, signups}){
   const doneHomes=homes.filter(h=>h.completed);
   const totalG=doneHomes.reduce((n,h)=>n+(h.result_g||0),0);
   const totalR=doneHomes.reduce((n,h)=>n+(h.result_r||0),0);
+  /* ---- แยกตามประเภท Home / Event ---- */
+  const grOf=(arr)=>arr.reduce((o,h)=>(h.completed?{g:o.g+(h.result_g||0),r:o.r+(h.result_r||0),done:o.done+1}:o),{g:0,r:0,done:0});
+  const homeKind=homes.filter(h=>(h.kind||"Home")==="Home"), eventKind=homes.filter(h=>(h.kind||"Home")==="Event");
+  const hGR=grOf(homeKind), eGR=grOf(eventKind);
   /* ---- leaderboards ---- */
   const hostLeaders=hostRows.slice().sort((a,b)=>b.homes-a.homes||b.g-a.g)
     .map(h=>({name:h.name,val:h.homes,sub:"จบแล้ว "+h.done+" · "+h.g+"G "+h.r+"R"}));
@@ -961,11 +982,19 @@ function DashboardView({homes, signups}){
         <h2>ใครจัด Home · ใคร Assist · ผลรวม Guest / Register</h2>
         <p>สถิติสะสมจากทุกงานในระบบ · กดดูรายบุคคลได้ที่ช่องค้นหาด้านล่าง</p></div></div>
       <div className="statgrid">
-        <div className="stat"><div className="k"><SVG d={I.cal} size={15}/>งาน Home ทั้งหมด</div><div className="v">{homes.length}</div><div className="s">จบแล้ว {doneHomes.length} · กำลังจะถึง {homes.length-doneHomes.length}</div></div>
+        <div className="stat"><div className="k"><SVG d={I.cal} size={15}/>งานทั้งหมด</div><div className="v">{homes.length}</div><div className="s">จบแล้ว {doneHomes.length} · กำลังจะถึง {homes.length-doneHomes.length}</div></div>
         <div className="stat amber"><div className="k"><SVG d={I.users} size={15}/>Guest (แขกที่มา)</div><div className="v">{totalG}</div><div className="s">รวมจากงานที่จบแล้ว</div></div>
         <div className="stat green"><div className="k"><SVG d={I.flag} size={15}/>Register (ลงทะเบียน)</div><div className="v">{totalR}</div><div className="s">รวมจากงานที่จบแล้ว</div></div>
-        <div className="stat"><div className="k"><SVG d={I.user} size={15}/>ผู้จัด Home</div><div className="v">{hostRows.length}</div><div className="s">คนที่เคยเปิดงาน</div></div>
+        <div className="stat"><div className="k"><SVG d={I.user} size={15}/>ผู้จัดงาน</div><div className="v">{hostRows.length}</div><div className="s">คนที่เคยเปิดงาน</div></div>
         <div className="stat"><div className="k"><SVG d={I.star} size={15}/>การลงชื่อ Assist</div><div className="v">{signups.length}</div><div className="s">{assistRows.length} คนไม่ซ้ำ</div></div>
+      </div>
+
+      <div className="eyebrow" style={{marginBottom:10}}>แยกตามประเภท</div>
+      <div className="dash-cols" style={{marginBottom:20}}>
+        <div className="stat green"><div className="k"><SVG d={I.cal} size={15}/>งาน Home</div><div className="v">{homeKind.length}</div>
+          <div className="s">จบแล้ว {hGR.done} · <b>{hGR.g}</b> Guest · <b>{hGR.r}</b> Register</div></div>
+        <div className="stat" style={{background:"linear-gradient(150deg,#EDE7FB,#fff)"}}><div className="k"><SVG d={I.star} size={15}/>งาน Event</div><div className="v" style={{color:"#5B3FAE"}}>{eventKind.length}</div>
+          <div className="s">จบแล้ว {eGR.done} · <b>{eGR.g}</b> Guest · <b>{eGR.r}</b> Register</div></div>
       </div>
 
       <div className="panel" style={{padding:18,marginBottom:18}}>
@@ -1060,6 +1089,7 @@ create table if not exists public.ilp69_guests (
 -- เพิ่มคอลัมน์ผู้นำการแนะนำ / Zoom Manager (ปลอดภัยถ้ามีอยู่แล้ว)
 alter table public.ilp69_homes add column if not exists intro_leader text;
 alter table public.ilp69_homes add column if not exists zoom_manager text;
+alter table public.ilp69_homes add column if not exists kind text not null default 'Home';
 
 create index if not exists ilp69_signups_home_idx on public.ilp69_signups(home_id);
 create index if not exists ilp69_guests_home_idx  on public.ilp69_guests(home_id);
