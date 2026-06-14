@@ -88,10 +88,27 @@
   .badge.group{background:#ECEAF7;color:#4B3F8F;border-color:#D9D4F0}
   .badge.k-home{background:var(--green-tint);color:var(--green-deep);border-color:#CDE6DD}
   .badge.k-event{background:#EDE7FB;color:#5B3FAE;border-color:#DCD2F4}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
-  .segbtn{border:none;background:transparent;padding:8px 20px;border-radius:9px;font-weight:600;font-size:14px;color:var(--ink-soft);display:inline-flex;align-items:center;gap:7px}
+  .badge.k-call{background:var(--amber-tint);color:#8a5512;border-color:#EAD9B0}
+  .seg{display:inline-flex;flex-wrap:wrap;background:var(--paper-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+  .segbtn{border:none;background:transparent;padding:8px 18px;border-radius:9px;font-weight:600;font-size:14px;color:var(--ink-soft);display:inline-flex;align-items:center;gap:7px}
   .segbtn.on{background:#fff;color:var(--green-deep);box-shadow:var(--shadow)}
-  .segbtn.on.ev{color:#5B3FAE}
+  .segbtn.on.ev{color:#5B3FAE}.segbtn.on.co{color:#8a5512}
+  /* ===== criteria (เกณฑ์การคัดเลือก) ===== */
+  .critgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .crit{border:1px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--paper)}
+  .crit.met{border-color:#CDE6DD;background:var(--green-tint)}
+  .crit .ct{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px;color:var(--ink-soft)}
+  .crit.met .ct{color:var(--green-deep)}
+  .crit .cv{font-family:"Bai Jamjuree";font-weight:700;font-size:24px;margin-top:7px;line-height:1}
+  .crit .cv small{font-size:13px;color:var(--muted);font-weight:500}
+  .crit .cbar{height:7px;border-radius:99px;background:#fff;border:1px solid var(--line);overflow:hidden;margin-top:9px}
+  .crit .cbar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green),var(--green-deep))}
+  .crit .cstat{font-size:12px;margin-top:7px;color:var(--muted)}
+  .crit.met .cstat{color:var(--green-deep);font-weight:600}
+  .cpill{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--paper-2);color:var(--muted);border:1px solid var(--line);white-space:nowrap;font-family:"Bai Jamjuree"}
+  .cpill.ok{background:var(--green-tint);color:var(--green-deep);border-color:#CDE6DD}
+  .cstatus{font-family:"Bai Jamjuree";font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--paper-2);color:var(--muted);white-space:nowrap}
+  .cstatus.done{background:#0E211C;color:#D9EDE6}
   .host{display:inline-flex;align-items:center;gap:7px;margin-top:11px;font-size:13px}
   .host .lbl{color:var(--muted)}
   .ava{width:24px;height:24px;border-radius:50%;background:var(--green-tint);color:var(--green-deep);display:grid;place-items:center;font-weight:700;font-size:11px;font-family:"Bai Jamjuree"}
@@ -423,6 +440,10 @@ function Toast({msg}){ return <div className={"toast"+(msg?" show":"")}>{msg&&<S
 function ChannelBadge({channel}){ if(!channel) return null; const onsite=/onsite|พบตัว/i.test(channel);
   return <span className={"badge "+(onsite?"onsite":"zoom")}><SVG d={onsite?I.pin:I.video} size={12}/>{channel}</span>; }
 
+const KIND_META={ "Home":{cls:"k-home",icon:I.cal}, "Event":{cls:"k-event",icon:I.star}, "Call Out":{cls:"k-call",icon:I.phone} };
+const KINDS=["Home","Event","Call Out"];
+function KindBadge({kind}){ const k=kind||"Home"; const m=KIND_META[k]||KIND_META.Home; return <span className={"badge "+m.cls}><SVG d={m.icon} size={11}/>{k}</span>; }
+
 /* แถบข้อมูลบนการ์ด: กลุ่ม / Introduction Leader / Zoom Manager (โชว์เสมอ) */
 function HomeInfo({home}){
   const cell=(icon,label,val)=>(
@@ -512,8 +533,8 @@ function EventCard({home, signups, guests, db, onChange, toast}){
           {home.address && <div className="row"><SVG d={I.pin} size={15}/>{home.address}</div>}
           {home.host_contact && <div className="row"><SVG d={I.phone} size={15}/>{home.host_contact}</div>}
         </div>
-        <div className="badges"><span className={"badge "+((home.kind||"Home")==="Event"?"k-event":"k-home")}><SVG d={(home.kind||"Home")==="Event"?I.star:I.cal} size={11}/>{home.kind||"Home"}</span><ChannelBadge channel={home.channel}/></div>
-        <div className="host"><span className="ava">{initials(home.host_name)}</span><span className="lbl">{(home.kind||"Home")==="Event"?"ผู้จัด Event ·":"ผู้จัด Home ·"}&nbsp;</span><b style={{fontWeight:600}}>{home.host_name}</b></div>
+        <div className="badges"><KindBadge kind={home.kind}/><ChannelBadge channel={home.channel}/></div>
+        <div className="host"><span className="ava">{initials(home.host_name)}</span><span className="lbl">ผู้จัด ·&nbsp;</span><b style={{fontWeight:600}}>{home.host_name}</b></div>
         <HomeInfo home={home}/>
       </div>
       <div className="capbar-wrap">
@@ -578,6 +599,7 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
             <div className="seg">
               <button type="button" className={"segbtn"+(f.kind==="Home"?" on":"")} onClick={()=>set("kind","Home")}><SVG d={I.cal} size={15}/>Home</button>
               <button type="button" className={"segbtn ev"+(f.kind==="Event"?" on":"")} onClick={()=>set("kind","Event")}><SVG d={I.star} size={15}/>Event</button>
+              <button type="button" className={"segbtn co"+(f.kind==="Call Out"?" on":"")} onClick={()=>set("kind","Call Out")}><SVG d={I.phone} size={15}/>Call Out</button>
             </div></div>
           <div className="two">
             <div className="field"><label>{f.kind==="Event"?"ผู้จัด Event (Host) *":"ผู้จัด Home (Host) *"}</label>
@@ -783,8 +805,7 @@ function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
             <div className="field"><label><SVG d={I.flag} size={13}/>ประเภท</label>
               <select className="sel" value={fKind} onChange={e=>setFKind(e.target.value)}>
                 <option value="">— ทั้งหมด —</option>
-                <option value="Home">Home</option>
-                <option value="Event">Event</option></select></div>
+                {KINDS.map(k=><option key={k} value={k}>{k}</option>)}</select></div>
             <div className="field"><label><SVG d={I.user} size={13}/>คน (ผู้จัด / ผู้ช่วย)</label>
               <select className="sel" value={fPerson} onChange={e=>setFPerson(e.target.value)}>
                 <option value="">— ทุกคน —</option>
@@ -836,7 +857,7 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
                     <div className="datebig"><span className="d">{day}</span><span className="mo">{mo}</span></div>
                     <div className="dow">{dow}</div>
                     <div className="ctitle">{h.title||h.host_name}</div>
-                    <div className="badges"><span className={"badge "+((h.kind||"Home")==="Event"?"k-event":"k-home")}><SVG d={(h.kind||"Home")==="Event"?I.star:I.cal} size={11}/>{h.kind||"Home"}</span><ChannelBadge channel={h.channel}/>{h.completed && resultText(h) && <span className="badge result"><SVG d={I.flag} size={11}/>{resultText(h)}</span>}</div>
+                    <div className="badges"><KindBadge kind={h.kind}/><ChannelBadge channel={h.channel}/>{h.completed && resultText(h) && <span className="badge result"><SVG d={I.flag} size={11}/>{resultText(h)}</span>}</div>
                     <div className="host"><span className="ava">{initials(h.host_name)}</span><span className="lbl">ผู้จัด ·&nbsp;</span><b style={{fontWeight:600}}>{h.host_name}</b></div>
                     <HomeInfo home={h}/>
                   </div>
@@ -884,6 +905,7 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
         <h3>เลือกชื่อผู้จัด Home ด้านบน</h3><p>ระบบจะแสดงทุกงานของคนนั้น ทั้งที่กำลังจะถึงและที่ผ่านมา พร้อมรายชื่อคนที่มาช่วย</p></div>}
       {q && mine.length===0 && <div className="empty" style={{marginTop:16}}><h3>ยังไม่มีงานของ “{q}”</h3>
         <p>กดสร้างงาน Home เพื่อเปิดรับ Assist ได้เลย</p><button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงาน</button></div>}
+      {q && mine.length>0 && <div style={{marginTop:16}}><CriteriaPanel s={critStats(homes, q)} /></div>}
       {q && mine.length>0 && <div className="hostgrid" style={{marginTop:16}}>
         {mine.map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo}=fmtDate(h.event_date);
           return (
@@ -919,6 +941,54 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
 
 /* ===== dashboard ===== */
 const nrm=(s)=>(s||"").trim().replace(/\s+/g," ")||"—";
+/* เกณฑ์ Leadership Program: Home สำเร็จ = Guest ≥4 และลงทะเบียน ≥25% ของ Guest */
+const CRIT_ORG=3, CRIT_GUEST=25, CRIT_REG=12, MIN_GUEST=4;
+const isSuccessHome=(h)=> (h.result_g||0)>=MIN_GUEST && (h.result_r||0)*4>=(h.result_g||0);
+function critStats(homes, hostName){
+  const key=nrm(hostName); const mine=homes.filter(h=>nrm(h.host_name)===key);
+  const cnt=k=>mine.filter(h=>(h.kind||"Home")===k).length;
+  const sucCnt=k=>mine.filter(h=>(h.kind||"Home")===k&&isSuccessHome(h)).length;
+  const guest=mine.reduce((n,h)=>n+(h.result_g||0),0);
+  const reg=mine.reduce((n,h)=>n+(h.result_r||0),0);
+  const orgSuccess=mine.filter(h=>(h.kind||"Home")!=="Call Out"&&isSuccessHome(h)).length;
+  const c1=orgSuccess>=CRIT_ORG, c2=guest>=CRIT_GUEST, c3=reg>=CRIT_REG;
+  return { name:hostName, total:mine.length, home:cnt("Home"), homeSuccess:sucCnt("Home"),
+    event:cnt("Event"), eventSuccess:sucCnt("Event"), call:cnt("Call Out"),
+    orgSuccess, guest, reg, c1, c2, c3, passed:(c1?1:0)+(c2?1:0)+(c3?1:0) };
+}
+function CritItem({label, icon, cur, goal, unit, met}){
+  const pct=Math.min(100,Math.round(cur/goal*100));
+  return (
+    <div className={"crit"+(met?" met":"")}>
+      <div className="ct"><SVG d={met?I.check:icon} size={15}/>{label}</div>
+      <div className="cv">{cur}<small> / {goal} {unit}</small></div>
+      <div className="cbar"><i style={{width:pct+"%"}}/></div>
+      <div className="cstat">{met?"ผ่านเกณฑ์แล้ว ✓":"อีก "+(goal-cur)+" "+unit}</div>
+    </div>
+  );
+}
+function CriteriaPanel({s}){
+  return (
+    <div className="panel">
+      <h3 style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
+        <span style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.trophy} size={18}/>เกณฑ์การคัดเลือก (Leadership)</span>
+        <span className={"cstatus"+(s.passed===3?" done":"")}>{s.passed===3?"ผ่านครบ 3/3 ✓":"ผ่าน "+s.passed+"/3"}</span></h3>
+      <p className="lead">Home/Event สำเร็จ = มี Guest ≥ {MIN_GUEST} คน และลงทะเบียน ≥ 25% ของ Guest</p>
+      <div className="profile" style={{marginBottom:16}}>
+        <div className="pbox"><div className="pv">{s.home}</div><div className="pl">Home ทั้งหมด · สำเร็จ {s.homeSuccess}</div></div>
+        <div className="pbox"><div className="pv">{s.event}</div><div className="pl">Event · สำเร็จ {s.eventSuccess}</div></div>
+        <div className="pbox"><div className="pv">{s.call}</div><div className="pl">Call Out</div></div>
+        <div className="pbox"><div className="pv">{s.guest}</div><div className="pl">Guest รวม</div></div>
+        <div className="pbox"><div className="pv">{s.reg}</div><div className="pl">ลงทะเบียนรวม</div></div>
+      </div>
+      <div className="critgrid">
+        <CritItem label="จัดงานสำเร็จ (Home/Event)" icon={I.trophy} cur={s.orgSuccess} goal={CRIT_ORG} unit="ครั้ง" met={s.c1}/>
+        <CritItem label="Guest มาทั้งหมด" icon={I.users} cur={s.guest} goal={CRIT_GUEST} unit="คน" met={s.c2}/>
+        <CritItem label="ลงทะเบียน (ทุกช่องทาง)" icon={I.flag} cur={s.reg} goal={CRIT_REG} unit="คน" met={s.c3}/>
+      </div>
+    </div>
+  );
+}
 function StatLeaders({title, icon, rows, unit, accent}){
   const max=Math.max(1,...rows.map(r=>r.val));
   return (
@@ -960,8 +1030,11 @@ function DashboardView({homes, signups}){
   const totalR=doneHomes.reduce((n,h)=>n+(h.result_r||0),0);
   /* ---- แยกตามประเภท Home / Event ---- */
   const grOf=(arr)=>arr.reduce((o,h)=>(h.completed?{g:o.g+(h.result_g||0),r:o.r+(h.result_r||0),done:o.done+1}:o),{g:0,r:0,done:0});
-  const homeKind=homes.filter(h=>(h.kind||"Home")==="Home"), eventKind=homes.filter(h=>(h.kind||"Home")==="Event");
-  const hGR=grOf(homeKind), eGR=grOf(eventKind);
+  const homeKind=homes.filter(h=>(h.kind||"Home")==="Home"), eventKind=homes.filter(h=>(h.kind||"Home")==="Event"), callKind=homes.filter(h=>(h.kind||"Home")==="Call Out");
+  const hGR=grOf(homeKind), eGR=grOf(eventKind), cGR=grOf(callKind);
+  /* ---- เกณฑ์รายคน (ทุกคนที่เคยจัดงาน) ---- */
+  const critList=Object.keys(hostMap).map(n=>critStats(homes,n)).sort((a,b)=>b.passed-a.passed||b.orgSuccess-a.orgSuccess||b.guest-a.guest);
+  const qualified=critList.filter(s=>s.passed===3).length;
   /* ---- leaderboards ---- */
   const hostLeaders=hostRows.slice().sort((a,b)=>b.homes-a.homes||b.g-a.g)
     .map(h=>({name:h.name,val:h.homes,sub:"จบแล้ว "+h.done+" · "+h.g+"G "+h.r+"R"}));
@@ -990,11 +1063,33 @@ function DashboardView({homes, signups}){
       </div>
 
       <div className="eyebrow" style={{marginBottom:10}}>แยกตามประเภท</div>
-      <div className="dash-cols" style={{marginBottom:20}}>
+      <div className="statgrid">
         <div className="stat green"><div className="k"><SVG d={I.cal} size={15}/>งาน Home</div><div className="v">{homeKind.length}</div>
-          <div className="s">จบแล้ว {hGR.done} · <b>{hGR.g}</b> Guest · <b>{hGR.r}</b> Register</div></div>
+          <div className="s">จบแล้ว {hGR.done} · <b>{hGR.g}</b> Guest · <b>{hGR.r}</b> Reg</div></div>
         <div className="stat" style={{background:"linear-gradient(150deg,#EDE7FB,#fff)"}}><div className="k"><SVG d={I.star} size={15}/>งาน Event</div><div className="v" style={{color:"#5B3FAE"}}>{eventKind.length}</div>
-          <div className="s">จบแล้ว {eGR.done} · <b>{eGR.g}</b> Guest · <b>{eGR.r}</b> Register</div></div>
+          <div className="s">จบแล้ว {eGR.done} · <b>{eGR.g}</b> Guest · <b>{eGR.r}</b> Reg</div></div>
+        <div className="stat amber"><div className="k"><SVG d={I.phone} size={15}/>งาน Call Out</div><div className="v">{callKind.length}</div>
+          <div className="s">จบแล้ว {cGR.done} · <b>{cGR.g}</b> Guest · <b>{cGR.r}</b> Reg</div></div>
+      </div>
+
+      <div className="panel">
+        <h3 style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
+          <span style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.trophy} size={18}/>การผ่านเกณฑ์ของแต่ละคน</span>
+          <span className="cstatus done">ผ่านครบแล้ว {qualified} คน</span></h3>
+        <p className="lead">เกณฑ์: จัดงานสำเร็จ ≥ {CRIT_ORG} · Guest ≥ {CRIT_GUEST} · ลงทะเบียน ≥ {CRIT_REG} (Home/Event สำเร็จ = Guest ≥ {MIN_GUEST} & ลงทะเบียน ≥ 25%)</p>
+        {critList.length===0 ? <div className="empty-assist">ยังไม่มีข้อมูล</div> :
+          <div className="lead-list">{critList.map(s=>(
+            <div className="lead-row" key={s.name}>
+              <span className="ava" style={{flex:"0 0 auto"}}>{initials(s.name)}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div className="lead-name">{s.name}</div>
+                <div className="lead-sub">Home {s.home} · Event {s.event} · Call Out {s.call}</div></div>
+              <span className={"cpill"+(s.c1?" ok":"")}>จัด {s.orgSuccess}/{CRIT_ORG}</span>
+              <span className={"cpill"+(s.c2?" ok":"")}>G {s.guest}/{CRIT_GUEST}</span>
+              <span className={"cpill"+(s.c3?" ok":"")}>R {s.reg}/{CRIT_REG}</span>
+              <span className={"cstatus"+(s.passed===3?" done":"")}>{s.passed===3?"ผ่าน ✓":s.passed+"/3"}</span>
+            </div>))}
+          </div>}
       </div>
 
       <div className="panel" style={{padding:18,marginBottom:18}}>
@@ -1030,6 +1125,8 @@ function DashboardView({homes, signups}){
             </div></div>}
         </div>}
       </div>
+
+      {pHost && <CriteriaPanel s={critStats(homes, sel)} />}
 
       <div className="dash-cols">
         <StatLeaders title="จัด Home มากสุด" icon={I.trophy} rows={hostLeaders} unit="งาน" />
