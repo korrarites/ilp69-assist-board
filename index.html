@@ -237,6 +237,12 @@
   .nm-edit{border:1px solid transparent;background:transparent;flex:1;min-width:0;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink);padding:3px 6px;border-radius:7px}
   .nm-edit:hover{border-color:var(--line)}
   .nm-edit:focus{outline:none;background:#fff;border-color:var(--green);box-shadow:0 0 0 3px var(--green-tint)}
+  /* ===== board filter bar ===== */
+  .filterbar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:18px}
+  .filterbar .field{flex:1;min-width:150px}
+  .filterbar .field label{display:flex;align-items:center;gap:5px}
+  .filterbar .res{margin-left:auto;font-size:13px;color:var(--muted);white-space:nowrap;padding-bottom:9px}
+  .filterbar .res b{color:var(--green-deep);font-family:"Bai Jamjuree"}
   /* ===== shared-card focus highlight ===== */
   .card{scroll-margin-top:104px}
   @keyframes flashring{0%,100%{box-shadow:var(--shadow)}18%,62%{box-shadow:0 0 0 3px var(--green), var(--shadow-lg)}}
@@ -732,8 +738,22 @@ function GuestModal({home, guests, db, onChange, toast, onClose}){
 
 /* ===== views ===== */
 function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
+  const [fPerson,setFPerson]=useState(""); const [fGroup,setFGroup]=useState(""); const [fDate,setFDate]=useState("");
   const upcoming=homes.filter(h=>!isArchived(h)).sort((a,b)=>a.event_date.localeCompare(b.event_date));
   const urgentN=upcoming.filter(h=>{const d=daysUntil(h.event_date);return d>=0&&d<=7;}).length;
+  /* ตัวเลือกตัวกรอง (จากงานในบอร์ดเท่านั้น) */
+  const upIds=new Set(upcoming.map(h=>h.id));
+  const people=Array.from(new Set([...upcoming.map(h=>h.host_name), ...signups.filter(s=>upIds.has(s.home_id)).map(s=>nrm(s.assist_name))])).filter(Boolean).sort();
+  const groups=Array.from(new Set(upcoming.map(h=>h.host_group).filter(g=>g!=null))).sort((a,b)=>a-b);
+  const dates=Array.from(new Set(upcoming.map(h=>h.event_date))).sort();
+  const active=fPerson||fGroup||fDate;
+  const filtered=upcoming.filter(h=>{
+    if(fGroup && String(h.host_group||"")!==fGroup) return false;
+    if(fDate && h.event_date!==fDate) return false;
+    if(fPerson){ const isHost=h.host_name===fPerson; const isAssist=signups.some(s=>s.home_id===h.id && nrm(s.assist_name)===fPerson); if(!isHost&&!isAssist) return false; }
+    return true;
+  });
+  const clear=()=>{ setFPerson(""); setFGroup(""); setFDate(""); };
   return (
     <div className="wrap page">
       <div className="sec-h">
@@ -746,10 +766,32 @@ function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
         ? <div className="empty"><div className="big"><SVG d={I.cal} size={26}/></div>
             <h3>ยังไม่มีงานในบอร์ด</h3><p>ให้ผู้จัด Home กดสร้างงานพร้อมวัน เวลา และจำนวน Assist ที่เปิดรับ แล้วทุกคนจะเห็นและมาลงชื่อได้</p>
             <button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงานแรก</button></div>
-        : <div className="deck">
-            {upcoming.map(h=><EventCard key={h.id} home={h} signups={signups} guests={guests} db={db} onChange={onChange} toast={toast}/>)}
-            <button className="addcard" onClick={onCreate}><div><div className="plus"><SVG d={I.plus} size={22}/></div><b>สร้างงาน Home</b><span>เพิ่มงานใหม่ลงบอร์ด</span></div></button>
-          </div>}
+        : <>
+          <div className="filterbar">
+            <div className="field"><label><SVG d={I.user} size={13}/>คน (ผู้จัด / ผู้ช่วย)</label>
+              <select className="sel" value={fPerson} onChange={e=>setFPerson(e.target.value)}>
+                <option value="">— ทุกคน —</option>
+                {people.map(n=><option key={n} value={n}>{n}</option>)}</select></div>
+            <div className="field"><label><SVG d={I.user} size={13}/>กลุ่ม</label>
+              <select className="sel" value={fGroup} onChange={e=>setFGroup(e.target.value)}>
+                <option value="">— ทุกกลุ่ม —</option>
+                {groups.map(g=><option key={g} value={String(g)}>กลุ่ม {g}</option>)}</select></div>
+            <div className="field"><label><SVG d={I.cal} size={13}/>วันที่</label>
+              <select className="sel" value={fDate} onChange={e=>setFDate(e.target.value)}>
+                <option value="">— ทุกวัน —</option>
+                {dates.map(d=>{const f=fmtDate(d);return <option key={d} value={d}>{f.day} {f.mo} · {f.dow}</option>;})}</select></div>
+            <div className="res">{active?<>พบ <b>{filtered.length}</b> / {upcoming.length} งาน</>:<>ทั้งหมด <b>{upcoming.length}</b> งาน</>}</div>
+            {active && <button className="btn btn-sm" onClick={clear}><SVG d={I.x} size={14}/>ล้างตัวกรอง</button>}
+          </div>
+          {filtered.length===0
+            ? <div className="empty"><div className="big"><SVG d={I.search} size={26}/></div>
+                <h3>ไม่พบงานตามตัวกรอง</h3><p>ลองเปลี่ยนเงื่อนไข หรือกดล้างตัวกรองเพื่อดูทุกงาน</p>
+                <button className="btn" onClick={clear}><SVG d={I.x} size={15}/>ล้างตัวกรอง</button></div>
+            : <div className="deck">
+                {filtered.map(h=><EventCard key={h.id} home={h} signups={signups} guests={guests} db={db} onChange={onChange} toast={toast}/>)}
+                {!active && <button className="addcard" onClick={onCreate}><div><div className="plus"><SVG d={I.plus} size={22}/></div><b>สร้างงาน Home</b><span>เพิ่มงานใหม่ลงบอร์ด</span></div></button>}
+              </div>}
+        </>}
     </div>
   );
 }
