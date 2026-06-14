@@ -228,6 +228,15 @@
   .gtbl .delg{border:none;background:transparent;color:var(--muted);width:30px;height:30px;border-radius:7px;display:grid;place-items:center;margin:0 auto}
   .gtbl .delg:hover{background:var(--red-tint);color:var(--red)}
   .gtbl .selint{font-weight:600}
+  /* ===== card info strip (กลุ่ม / IL / ZM) ===== */
+  .cardinfo{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+  .ci{display:inline-flex;align-items:center;gap:5px;font-size:12px;background:var(--paper-2);border:1px solid var(--line);border-radius:9px;padding:4px 9px;color:var(--ink-soft);max-width:100%}
+  .ci b{color:var(--green-deep);font-family:"Bai Jamjuree";font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+  .ci span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+  .ci.empty{opacity:.55}.ci.empty span{font-style:italic;font-weight:400}
+  .nm-edit{border:1px solid transparent;background:transparent;flex:1;min-width:0;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink);padding:3px 6px;border-radius:7px}
+  .nm-edit:hover{border-color:var(--line)}
+  .nm-edit:focus{outline:none;background:#fff;border-color:var(--green);box-shadow:0 0 0 3px var(--green-tint)}
   .skeleton{background:linear-gradient(90deg,#eee,#f6f5f0,#eee);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:8px}
   @keyframes sk{to{background-position:-200% 0}}
   .footer{max-width:1180px;margin:0 auto;padding:24px 20px 40px;color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line)}
@@ -313,6 +322,7 @@ function makeSupabaseDB(cfg){
     async updateHome(id,p){ const {error}=await sb.from("ilp69_homes").update(p).eq("id",id); if(error) throw error; },
     async deleteHome(id){ const {error}=await sb.from("ilp69_homes").delete().eq("id",id); if(error) throw error; },
     async createSignup(s){ const {error}=await sb.from("ilp69_signups").insert(s); if(error) throw error; },
+    async updateSignup(id,p){ const {error}=await sb.from("ilp69_signups").update(p).eq("id",id); if(error) throw error; },
     async deleteSignup(id){ const {error}=await sb.from("ilp69_signups").delete().eq("id",id); if(error) throw error; },
     async listGuests(){ const {data,error}=await sb.from("ilp69_guests").select("*").order("created_at",{ascending:true}); if(error) throw error; return data||[]; },
     async createGuest(g){ const {data,error}=await sb.from("ilp69_guests").insert(g).select("id").single(); if(error) throw error; return data.id; },
@@ -346,6 +356,7 @@ function makeDemoDB(){
     async updateHome(id,p){ const d=read(); d.homes=d.homes.map(x=>x.id===id?{...x,...p}:x); write(d); },
     async deleteHome(id){ const d=read(); d.homes=d.homes.filter(x=>x.id!==id); d.signups=d.signups.filter(x=>x.home_id!==id); d.guests=d.guests.filter(x=>x.home_id!==id); write(d); },
     async createSignup(s){ const d=read(); d.signups.push({...s,id:uid(),created_at:new Date().toISOString()}); write(d); },
+    async updateSignup(id,p){ const d=read(); d.signups=d.signups.map(x=>x.id===id?{...x,...p}:x); write(d); },
     async deleteSignup(id){ const d=read(); d.signups=d.signups.filter(x=>x.id!==id); write(d); },
     async listGuests(){ return read().guests.slice().sort((a,b)=>(a.created_at||"").localeCompare(b.created_at||"")); },
     async createGuest(g){ const d=read(); const id=uid(); d.guests.push({...g,id,created_at:new Date().toISOString()}); write(d); return id; },
@@ -388,6 +399,49 @@ const I={
 function Toast({msg}){ return <div className={"toast"+(msg?" show":"")}>{msg&&<SVG d={I.check} size={17}/>}{msg}</div>; }
 function ChannelBadge({channel}){ if(!channel) return null; const onsite=/onsite|พบตัว/i.test(channel);
   return <span className={"badge "+(onsite?"onsite":"zoom")}><SVG d={onsite?I.pin:I.video} size={12}/>{channel}</span>; }
+
+/* แถบข้อมูลบนการ์ด: กลุ่ม / Introduction Leader / Zoom Manager (โชว์เสมอ) */
+function HomeInfo({home}){
+  const cell=(icon,label,val)=>(
+    <span className={"ci"+(val?"":" empty")} title={label+": "+(val||"ยังไม่ระบุ")}>
+      <SVG d={icon} size={12}/><b>{label}</b><span>{val||"—"}</span></span>);
+  return (
+    <div className="cardinfo">
+      {cell(I.user,"กลุ่ม", home.host_group?String(home.host_group):"")}
+      {cell(I.star,"IL", home.intro_leader)}
+      {cell(I.video,"ZM", home.zoom_manager)}
+    </div>
+  );
+}
+
+/* แถวผู้ช่วยแบบแก้ไขชื่อได้ (ใช้กับงานที่จบแล้ว) */
+function AssistEditRow({s, db, onChange, toast}){
+  const [v,setV]=useState(s.assist_name||""); useEffect(()=>{ setV(s.assist_name||""); },[s.id]);
+  const save=async()=>{ const nv=v.trim(); if(!nv){ setV(s.assist_name||""); return; } if(nv===(s.assist_name||"")) return;
+    try{ await db.updateSignup(s.id,{assist_name:nv}); onChange(); toast("แก้ไขชื่อแล้ว"); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); setV(s.assist_name||""); } };
+  const del=async()=>{ try{ await db.deleteSignup(s.id); onChange(); toast("ถอนชื่อแล้ว"); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
+  return (
+    <div className="arow">
+      <span className="ava">{initials(v)}</span>
+      <input className="nm-edit" value={v} onChange={e=>setV(e.target.value)} onBlur={save}
+        onKeyDown={e=>{ if(e.key==="Enter") e.target.blur(); }} title="แก้ไขชื่อแล้วกด Enter" />
+      <button className="xbtn" title="ถอนชื่อ" onClick={del}><SVG d={I.x} size={15}/></button>
+    </div>
+  );
+}
+function ArchiveAssists({home, list, db, onChange, toast}){
+  const [add,setAdd]=useState(false);
+  const doAdd=async(p)=>{ try{ await db.createSignup({home_id:home.id,assist_name:p.assist_name,cohort:null,contact:null}); setAdd(false); onChange(); toast("เพิ่มผู้ช่วยแล้ว"); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); } };
+  return (
+    <div className="assists">
+      {list.length===0 && <div className="empty-assist">ยังไม่มีผู้ช่วย — กดเพิ่มได้</div>}
+      {list.map(s=><AssistEditRow key={s.id} s={s} db={db} onChange={onChange} toast={toast} />)}
+      {add
+        ? <SignForm onSubmit={doAdd} onCancel={()=>setAdd(false)} />
+        : <button className="btn btn-ghost btn-sm" style={{justifyContent:"center",marginTop:2}} onClick={()=>setAdd(true)}><SVG d={I.plus} size={14}/>เพิ่มผู้ช่วย</button>}
+    </div>
+  );
+}
 
 /* ===== sign-up form (ไม่มีรุ่น) ===== */
 function SignForm({onSubmit,onCancel,full}){
@@ -433,12 +487,11 @@ function EventCard({home, signups, guests, db, onChange, toast}){
         <div className="meta">
           {home.time_slot && <div className="row"><SVG d={I.clock} size={15}/>{home.time_slot}</div>}
           {home.address && <div className="row"><SVG d={I.pin} size={15}/>{home.address}</div>}
-          {home.intro_leader && <div className="row"><SVG d={I.star} size={15}/>IL · {home.intro_leader}</div>}
-          {home.zoom_manager && <div className="row"><SVG d={I.video} size={15}/>ZM · {home.zoom_manager}</div>}
           {home.host_contact && <div className="row"><SVG d={I.phone} size={15}/>{home.host_contact}</div>}
         </div>
-        <div className="badges"><ChannelBadge channel={home.channel}/>{home.host_group && <span className="badge group"><SVG d={I.user} size={11}/>กลุ่ม {home.host_group}</span>}</div>
+        <div className="badges"><ChannelBadge channel={home.channel}/></div>
         <div className="host"><span className="ava">{initials(home.host_name)}</span><span className="lbl">ผู้จัด Home ·&nbsp;</span><b style={{fontWeight:600}}>{home.host_name}</b></div>
+        <HomeInfo home={home}/>
       </div>
       <div className="capbar-wrap">
         <div className="capbar-head"><span>ผู้ช่วย (Assist)</span><span><b>{filled}</b> / {need}{filled>need?" · +"+(filled-need)+" สำรอง":""}</span></div>
@@ -710,18 +763,17 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
                     <div className="datebig"><span className="d">{day}</span><span className="mo">{mo}</span></div>
                     <div className="dow">{dow}</div>
                     <div className="ctitle">{h.title||h.host_name}</div>
-                    {(h.intro_leader||h.zoom_manager) && <div className="meta">
-                      {h.intro_leader && <div className="row"><SVG d={I.star} size={15}/>IL · {h.intro_leader}</div>}
-                      {h.zoom_manager && <div className="row"><SVG d={I.video} size={15}/>ZM · {h.zoom_manager}</div>}
-                    </div>}
-                    <div className="badges"><ChannelBadge channel={h.channel}/>{h.host_group && <span className="badge group"><SVG d={I.user} size={11}/>กลุ่ม {h.host_group}</span>}{h.completed && resultText(h) && <span className="badge result"><SVG d={I.flag} size={11}/>{resultText(h)}</span>}</div>
+                    <div className="badges"><ChannelBadge channel={h.channel}/>{h.completed && resultText(h) && <span className="badge result"><SVG d={I.flag} size={11}/>{resultText(h)}</span>}</div>
                     <div className="host"><span className="ava">{initials(h.host_name)}</span><span className="lbl">ผู้จัด ·&nbsp;</span><b style={{fontWeight:600}}>{h.host_name}</b></div>
+                    <HomeInfo home={h}/>
                   </div>
                   <div className="capbar-wrap"><div className="capbar-head"><span>มาช่วยจริง</span><span><b>{list.length}</b> คน</span></div></div>
-                  <div className="assists">
-                    {list.length===0?<div className="empty-assist">ไม่มีผู้ลงชื่อ</div>
-                      :list.map(s=>(<div className="arow" key={s.id}><span className="ava">{initials(s.assist_name)}</span><span className="nm">{s.assist_name}</span></div>))}
-                  </div>
+                  {db
+                    ? <ArchiveAssists home={h} list={list} db={db} onChange={onChange} toast={toast} />
+                    : <div className="assists">
+                        {list.length===0?<div className="empty-assist">ไม่มีผู้ลงชื่อ</div>
+                          :list.map(s=>(<div className="arow" key={s.id}><span className="ava">{initials(s.assist_name)}</span><span className="nm">{s.assist_name}</span></div>))}
+                      </div>}
                   {db && <div className="card-foot" style={{paddingTop:0,display:"flex",gap:8}}>
                     <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGuestFor(h)}>
                       <SVG d={I.users} size={15}/>แขก{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);return gl.length?` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`:"";})()}</button>
