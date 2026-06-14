@@ -1167,7 +1167,7 @@ function App(){
   const connect=()=>{ const c=loadCfg(); setCfg(c); setDb(makeSupabaseDB(c)); setTab("board"); };
   const disconnect=()=>{ setCfg(null); setDb(makeDemoDB()); };
   const upcomingN=homes.filter(h=>!isArchived(h)).length, pastN=homes.filter(isArchived).length;
-  const TABS=[{id:"board",label:"บอร์ด",n:upcomingN},{id:"archive",label:"Achieve",n:pastN},{id:"dash",label:"Dashboard"},{id:"host",label:"มุมมอง Host"},{id:"settings",label:"ตั้งค่า"}];
+  const TABS=[{id:"board",label:"บอร์ด",n:upcomingN},{id:"archive",label:"Achieve",n:pastN},{id:"dash",label:"Dashboard"},{id:"host",label:"มุมมอง Host"}];
   return (
     <div>
       <datalist id="rosterlist">{HOST_ROSTER.map(n=><option key={n} value={n}/>)}</datalist>
@@ -1193,7 +1193,6 @@ function App(){
             {tab==="archive" && <ArchiveView homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} />}
             {tab==="dash"    && <DashboardView homes={homes} signups={signups} guests={guests} />}
             {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
-            {tab==="settings"&& <SettingsView cfg={cfg} db={db} onConnect={connect} onDisconnect={disconnect} toast={toast} onChange={refresh} />}
           </>}
       {showCreate && <CreateModal db={db} onChange={refresh} toast={toast} onClose={()=>setShowCreate(false)} />}
       <Toast msg={toastMsg} />
