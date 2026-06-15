@@ -622,8 +622,8 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
               <input className="inp" list="rosterlist" value={f.zoom_manager} placeholder="เช่น สปาร์ค63" onChange={e=>set("zoom_manager",e.target.value)} /></div>
           </div>
           <div className="two">
-            <div className="field"><label>วันที่ *</label>
-              <input className="inp" type="date" value={f.event_date} min={edit?undefined:todayStr()} onChange={e=>set("event_date",e.target.value)} /></div>
+            <div className="field"><label>วันที่ * <span style={{color:"var(--muted)",fontWeight:400}}>(ย้อนหลังได้ เพื่อเก็บ record)</span></label>
+              <input className="inp" type="date" value={f.event_date} onChange={e=>set("event_date",e.target.value)} /></div>
             <div className="field"><label>เวลา</label>
               <select className="sel" value={f.time_slot} onChange={e=>set("time_slot",e.target.value)}>{TIME_SLOTS.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
           </div>
