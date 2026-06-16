@@ -378,6 +378,8 @@ function makeSupabaseDB(cfg){
     async createGuest(g){ const {data,error}=await sb.from("ilp69_guests").insert(g).select("id").single(); if(error) throw error; return data.id; },
     async updateGuest(id,p){ const {error}=await sb.from("ilp69_guests").update(p).eq("id",id); if(error) throw error; },
     async deleteGuest(id){ const {error}=await sb.from("ilp69_guests").delete().eq("id",id); if(error) throw error; },
+    async writeLog(action,detail){ try{ await sb.from("ilp69_log").insert({action,detail}); }catch(e){} },
+    async listLog(limit){ const {data,error}=await sb.from("ilp69_log").select("*").order("created_at",{ascending:false}).limit(limit||300); if(error) throw error; return data||[]; },
     async countHomes(){ const {count,error}=await sb.from("ilp69_homes").select("id",{count:"exact",head:true}); if(error) throw error; return count||0; },
     subscribe(cb){ const ch=sb.channel("ilp69-rt")
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_homes"},cb)
@@ -388,8 +390,8 @@ function makeSupabaseDB(cfg){
 }
 function makeDemoDB(){
   const K="ilp69_demo_v3";
-  const read=()=>{ let d; try{d=JSON.parse(localStorage.getItem(K)||'{"homes":[],"signups":[],"guests":[]}')}catch(e){d={homes:[],signups:[],guests:[]}}
-    d.homes=d.homes||[]; d.signups=d.signups||[]; d.guests=d.guests||[]; return d; };
+  const read=()=>{ let d; try{d=JSON.parse(localStorage.getItem(K)||'{"homes":[],"signups":[],"guests":[],"logs":[]}')}catch(e){d={homes:[],signups:[],guests:[],logs:[]}}
+    d.homes=d.homes||[]; d.signups=d.signups||[]; d.guests=d.guests||[]; d.logs=d.logs||[]; return d; };
   const write=(d)=>{ localStorage.setItem(K,JSON.stringify(d)); window.dispatchEvent(new Event("ilp69-demo-change")); };
   const uid=()=>(crypto.randomUUID?crypto.randomUUID():"id"+Date.now()+Math.random().toString(16).slice(2));
   if(!localStorage.getItem(K)){
@@ -412,6 +414,8 @@ function makeDemoDB(){
     async createGuest(g){ const d=read(); const id=uid(); d.guests.push({...g,id,created_at:new Date().toISOString()}); write(d); return id; },
     async updateGuest(id,p){ const d=read(); d.guests=d.guests.map(x=>x.id===id?{...x,...p}:x); write(d); },
     async deleteGuest(id){ const d=read(); d.guests=d.guests.filter(x=>x.id!==id); write(d); },
+    async writeLog(action,detail){ const d=read(); d.logs.push({id:uid(),action,detail,created_at:new Date().toISOString()}); if(d.logs.length>1000) d.logs=d.logs.slice(-1000); write(d); },
+    async listLog(limit){ return read().logs.slice().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||"")).slice(0,limit||300); },
     async countHomes(){ return read().homes.length; },
     subscribe(cb){ const f=()=>cb(); window.addEventListener("ilp69-demo-change",f); window.addEventListener("storage",f);
       return ()=>{window.removeEventListener("ilp69-demo-change",f);window.removeEventListener("storage",f);}; }
@@ -419,6 +423,24 @@ function makeDemoDB(){
 }
 async function importSeed(db){ for(const r of SEED){ const id=await db.createHome(rowFromSeed(r));
   for(const a of r.assists){ await db.createSignup({home_id:id,assist_name:a,cohort:null,contact:null}); } } }
+
+/* ===== Change-log wrapper (ห่อ db ให้บันทึก log ทุกการเปลี่ยนแปลง) ===== */
+const FIELD_LABEL={completed:"สถานะจบงาน",result_g:"Guest",result_r:"ลงทะเบียน",host_name:"ชื่อผู้จัด",host_group:"กลุ่ม",title:"หัวข้อ",event_date:"วันที่",time_slot:"เวลา",kind:"ประเภท",channel:"ช่องทาง",address:"สถานที่",assists_needed:"จำนวน Assist",host_contact:"ติดต่อ Host",note:"หมายเหตุ",intro_leader:"IL",zoom_manager:"ZM",assist_name:"ชื่อผู้ช่วย",guest_name:"ชื่อแขก",nickname:"ชื่อเล่น",contact:"เบอร์",contact_time:"เวลาสะดวก",inviter:"ผู้เชิญ",interested:"ความสนใจ",whats_so:"What's so",registered:"ลงทะเบียน",reflect_work:"สรุป:Work",reflect_nowork:"สรุป:ไม่Work",reflect_missing:"สรุป:Missing",reflect_next:"สรุป:Next",reflect_value:"สรุป:คุณค่า",reflect_praise:"สรุป:ชื่นชม",reflect_completion:"สรุป:Completion",reflect_breakthrough:"สรุป:Breakthrough"};
+function patchDesc(p){ return Object.keys(p||{}).map(k=>FIELD_LABEL[k]||k).join(", "); }
+function withLog(db){
+  const wrap=(action, fn, describe)=> async(...args)=>{ const res=await fn(...args); try{ const d=describe(res,...args); if(d!==null) await db.writeLog(action,d); }catch(e){} return res; };
+  return Object.assign({}, db, {
+    createHome: wrap("สร้างงาน",  db.createHome.bind(db),  (res,h)=>`${h.kind||"Home"} · ${h.host_name||""} · ${h.event_date||""}`),
+    updateHome: wrap("แก้ไขงาน",  db.updateHome.bind(db),  (res,id,p)=>{ const ks=Object.keys(p||{}); if(ks.length&&ks.every(k=>k==="result_g"||k==="result_r")) return null; if(p&&"completed" in p) return p.completed?"ติ๊กจบงาน":"เปิดงานกลับ"; return "แก้ไข: "+patchDesc(p); }),
+    deleteHome: wrap("ลบงาน",     db.deleteHome.bind(db),  ()=>"ลบงานและข้อมูลที่เกี่ยวข้อง"),
+    createSignup: wrap("เพิ่มผู้ช่วย", db.createSignup.bind(db), (res,s)=>s.assist_name||""),
+    updateSignup: wrap("แก้ไขชื่อผู้ช่วย", db.updateSignup.bind(db), (res,id,p)=>p&&p.assist_name||"แก้ไข"),
+    deleteSignup: wrap("ถอนผู้ช่วย", db.deleteSignup.bind(db), ()=>"ถอนรายชื่อ"),
+    createGuest: wrap("เพิ่มแขก",  db.createGuest.bind(db), (res,g)=>g.guest_name||"(แถวว่าง)"),
+    updateGuest: wrap("แก้ไขแขก",  db.updateGuest.bind(db), (res,id,p)=> p&&"registered" in p ? (p.registered?"ติ๊กลงทะเบียน":"ยกเลิกลงทะเบียน") : "แก้ไข: "+patchDesc(p)),
+    deleteGuest: wrap("ลบแขก",     db.deleteGuest.bind(db), ()=>"ลบรายชื่อแขก"),
+  });
+}
 
 /* ===== helpers ===== */
 const todayStr=()=>{ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
@@ -974,6 +996,54 @@ function HostGuestTable({mine, guests, db, onChange, toast}){
     </div>
   );
 }
+/* ตารางสรุปกิจกรรมแต่ละครั้งของ Host + ฟิลเตอร์ */
+function HostActivityTable({mine, signups}){
+  const [fKind,setFKind]=useState(""); const [fStatus,setFStatus]=useState("");
+  const statusOf=(h)=> h.completed?"จบแล้ว":(isPast(h.event_date)?"เลยวันแล้ว":"กำลังจะถึง");
+  let rows=mine.slice().sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||""));
+  if(fKind) rows=rows.filter(h=>(h.kind||"Home")===fKind);
+  if(fStatus) rows=rows.filter(h=>statusOf(h)===fStatus);
+  const active=fKind||fStatus;
+  const stColor={"จบแล้ว":{bg:"var(--green-tint)",c:"var(--green-deep)"},"กำลังจะถึง":{bg:"var(--amber-tint)",c:"#8a5512"},"เลยวันแล้ว":{bg:"var(--paper-2)",c:"var(--muted)"}};
+  return (
+    <div className="panel">
+      <h3 style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.cal} size={18}/>ตารางสรุปกิจกรรม (แต่ละครั้ง)</h3>
+      <div className="filterbar" style={{marginBottom:14}}>
+        <div className="field"><label><SVG d={I.flag} size={13}/>ประเภท</label>
+          <select className="sel" value={fKind} onChange={e=>setFKind(e.target.value)}>
+            <option value="">— ทั้งหมด —</option>{KINDS.map(k=><option key={k} value={k}>{k}</option>)}</select></div>
+        <div className="field"><label><SVG d={I.clock} size={13}/>สถานะ</label>
+          <select className="sel" value={fStatus} onChange={e=>setFStatus(e.target.value)}>
+            <option value="">— ทั้งหมด —</option><option>จบแล้ว</option><option>กำลังจะถึง</option><option>เลยวันแล้ว</option></select></div>
+        <div className="res">แสดง <b>{rows.length}</b> / {mine.length} ครั้ง</div>
+        {active && <button className="btn btn-sm" onClick={()=>{setFKind("");setFStatus("");}}><SVG d={I.x} size={14}/>ล้าง</button>}
+      </div>
+      {rows.length===0 ? <div className="empty-assist">ไม่พบกิจกรรมตามตัวกรอง</div> :
+        <div className="gwrap" style={{maxHeight:"none"}}>
+          <table className="sumtbl">
+            <thead><tr><th>วันที่</th><th>ประเภท</th><th>หัวข้อ</th><th>เวลา</th><th>Assist</th><th>Guest/ติดต่อ</th><th>ลงทะเบียน</th><th>สำเร็จ</th><th>สถานะ</th></tr></thead>
+            <tbody>
+              {rows.map(h=>{ const {day,mo}=fmtDate(h.event_date); const k=h.kind||"Home"; const isCall=k==="Call Out";
+                const ac=signups.filter(s=>s.home_id===h.id).length; const need=h.assists_needed==null?9:h.assists_needed;
+                const suc=!isCall&&isSuccessHome(h); const st=statusOf(h); const sc=stColor[st]||stColor["เลยวันแล้ว"];
+                return (
+                  <tr key={h.id}>
+                    <td style={{whiteSpace:"nowrap"}}>{day} {mo}</td>
+                    <td><KindBadge kind={k}/></td>
+                    <td style={{fontWeight:600}}>{h.title||h.host_name}</td>
+                    <td style={{whiteSpace:"nowrap",color:"var(--muted)"}}>{h.time_slot||"—"}</td>
+                    <td>{ac}/{need}</td>
+                    <td>{h.result_g==null?"—":h.result_g}{isCall?" ติดต่อ":""}</td>
+                    <td>{h.result_r==null?"—":h.result_r}</td>
+                    <td>{isCall?<span style={{color:"var(--muted)"}}>—</span>:(suc?<span className="ipill yes">✓</span>:<span className="ipill no">–</span>)}</td>
+                    <td><span className="ipill" style={{background:sc.bg,color:sc.c}}>{st}</span></td>
+                  </tr>); })}
+            </tbody>
+          </table>
+        </div>}
+    </div>
+  );
+}
 function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
   const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null);
   const hostNames=Array.from(new Set(homes.map(h=>h.host_name))).sort();
@@ -1024,6 +1094,7 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
             </div>
           ); })}
       </div>}
+      {q && mine.length>0 && <div style={{marginTop:16}}><HostActivityTable mine={mine} signups={signups} /></div>}
       {completeFor && <CompleteModal home={completeFor} db={db} onChange={onChange} toast={toast} onClose={()=>setCompleteFor(null)} />}
       {guestFor && <GuestModal home={guestFor} guests={guests||[]} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
       {editFor && <CreateModal home={editFor} db={db} onChange={onChange} toast={toast} onClose={()=>setEditFor(null)} />}
@@ -1392,13 +1463,57 @@ function SettingsView({cfg, onConnect, onDisconnect, db, toast, onChange}){
   );
 }
 
+/* ===== hidden change-log (เปิดด้วยการพิมพ์ 8888) ===== */
+function fmtLogTime(s){ try{ const d=new Date(s); return new Intl.DateTimeFormat("th-TH",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}).format(d); }catch(e){ return s||""; } }
+function LogModal({db, onClose}){
+  const [rows,setRows]=useState(null); const [q,setQ]=useState("");
+  const load=useCallback(async()=>{ try{ setRows(await db.listLog(400)); }catch(e){ setRows([]); } },[db]);
+  useEffect(()=>{ load(); },[load]);
+  const actions=rows?Array.from(new Set(rows.map(r=>r.action))).sort():[];
+  const list=(rows||[]).filter(r=>!q||r.action===q);
+  return (
+    <div className="scrim" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal lg">
+        <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.clock} size={18}/></div>
+          <div style={{flex:1}}><h3>บันทึกการเปลี่ยนแปลง (Log)</h3>
+            <p>หน้าซ่อน · เปิดด้วยการพิมพ์ 8888 · ล่าสุด {rows?rows.length:0} รายการ</p></div>
+          <button className="btn btn-sm" onClick={load} style={{marginRight:8}}>รีเฟรช</button>
+          <button className="xbtn" onClick={onClose}><SVG d={I.x} size={18}/></button></div>
+        <div className="modal-b">
+          <div className="filterbar" style={{marginBottom:14}}>
+            <div className="field"><label><SVG d={I.search} size={13}/>กรองประเภท</label>
+              <select className="sel" value={q} onChange={e=>setQ(e.target.value)}>
+                <option value="">— ทั้งหมด —</option>
+                {actions.map(a=><option key={a} value={a}>{a}</option>)}</select></div>
+            <div className="res">แสดง <b>{list.length}</b> รายการ</div>
+          </div>
+          {rows===null ? <div className="empty-assist">กำลังโหลด…</div> :
+           list.length===0 ? <div className="empty-assist">ยังไม่มีบันทึก</div> :
+           <div className="gwrap" style={{maxHeight:"60vh"}}>
+             <table className="sumtbl">
+               <thead><tr><th>เวลา</th><th>การกระทำ</th><th>รายละเอียด</th></tr></thead>
+               <tbody>
+                 {list.map(r=>(
+                   <tr key={r.id}><td style={{whiteSpace:"nowrap",color:"var(--muted)"}}>{fmtLogTime(r.created_at)}</td>
+                     <td style={{fontWeight:600,whiteSpace:"nowrap"}}>{r.action}</td>
+                     <td>{r.detail}</td></tr>))}
+               </tbody>
+             </table>
+           </div>}
+        </div>
+        <div className="modal-f"><button className="btn" onClick={onClose}>ปิด</button></div>
+      </div>
+    </div>
+  );
+}
+
 /* ===== app shell ===== */
 function App(){
   const [cfg,setCfg]=useState(loadCfg());
-  const [db,setDb]=useState(()=>{ const c=loadCfg(); return c?makeSupabaseDB(c):makeDemoDB(); });
+  const [db,setDb]=useState(()=>{ const c=loadCfg(); return withLog(c?makeSupabaseDB(c):makeDemoDB()); });
   const [tab,setTab]=useState("board");
   const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]);
-  const [loading,setLoading]=useState(true); const [showCreate,setShowCreate]=useState(false);
+  const [loading,setLoading]=useState(true); const [showCreate,setShowCreate]=useState(false); const [showLog,setShowLog]=useState(false);
   const [focusId,setFocusId]=useState(()=>{ const m=(window.location.hash||"").match(/home=([\w-]+)/); return m?m[1]:null; });
   const focusedRef=useRef(false);
   const [toastMsg,setToastMsg]=useState(""); const toastT=useRef();
@@ -1410,6 +1525,8 @@ function App(){
     return ()=>{window.removeEventListener("focus",f);clearInterval(iv);}; },[refresh]);
   useEffect(()=>{ const onHash=()=>{ const m=(window.location.hash||"").match(/home=([\w-]+)/); if(m){ focusedRef.current=false; setFocusId(m[1]); } };
     window.addEventListener("hashchange",onHash); return ()=>window.removeEventListener("hashchange",onHash); },[]);
+  useEffect(()=>{ let buf=""; const onKey=(e)=>{ if(/^[0-9]$/.test(e.key)){ buf=(buf+e.key).slice(-4); if(buf==="8888"){ buf=""; setShowLog(true); } } else buf=""; };
+    window.addEventListener("keydown",onKey); return ()=>window.removeEventListener("keydown",onKey); },[]);
   useEffect(()=>{ if(loading||!focusId||focusedRef.current) return;
     const h=homes.find(x=>x.id===focusId); if(!h){ return; } focusedRef.current=true;
     setTab(isArchived(h)?"archive":"board");
@@ -1417,8 +1534,8 @@ function App(){
       if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"),1700); }
     },450); return ()=>clearTimeout(t);
   },[loading,focusId,homes]);
-  const connect=()=>{ const c=loadCfg(); setCfg(c); setDb(makeSupabaseDB(c)); setTab("board"); };
-  const disconnect=()=>{ setCfg(null); setDb(makeDemoDB()); };
+  const connect=()=>{ const c=loadCfg(); setCfg(c); setDb(withLog(makeSupabaseDB(c))); setTab("board"); };
+  const disconnect=()=>{ setCfg(null); setDb(withLog(makeDemoDB())); };
   const upcomingN=homes.filter(h=>!isArchived(h)).length, pastN=homes.filter(isArchived).length;
   const TABS=[{id:"board",label:"บอร์ด",n:upcomingN},{id:"archive",label:"Achieve",n:pastN},{id:"dash",label:"Dashboard"},{id:"members",label:"เกณฑ์รายคน"},{id:"host",label:"มุมมอง Host"}];
   return (
@@ -1449,6 +1566,7 @@ function App(){
             {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
           </>}
       {showCreate && <CreateModal db={db} onChange={refresh} toast={toast} onClose={()=>setShowCreate(false)} />}
+      {showLog && <LogModal db={db} onClose={()=>setShowLog(false)} />}
       <Toast msg={toastMsg} />
       <div className="footer"><span>ILP69 Home Assist Board</span>
         <span>{db.mode==="live"?"เชื่อมต่อฐานข้อมูลกลางแล้ว":"โหมดทดลอง · ไปที่ ตั้งค่า เพื่อเปิดใช้แบบแชร์"}</span></div>
