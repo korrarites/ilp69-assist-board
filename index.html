@@ -516,7 +516,7 @@ function EventCard({home, signups, guests, db, onChange, toast}){
   const [open,setOpen]=useState(false); const [gOpen,setGOpen]=useState(false);
   const list=signups.filter(s=>s.home_id===home.id);
   const glist=(guests||[]).filter(g=>g.home_id===home.id);
-  const need=home.assists_needed||9, past=isPast(home.event_date);
+  const need=(home.assists_needed==null?9:home.assists_needed), noAssist=need===0, past=isPast(home.event_date);
   const filled=list.length, isFull=filled>=need;
   const {day,mo,dow}=fmtDate(home.event_date);
   const du=daysUntil(home.event_date), urgent=!past && du>=0 && du<=7;
@@ -528,7 +528,7 @@ function EventCard({home, signups, guests, db, onChange, toast}){
     <div className={"card"+(past?" past":"")+(urgent?" urgent-card":"")} id={"home-"+home.id}>
       {urgent && <div className="urgent"><SVG d={I.bolt} size={14}/>ต้องการด่วน · {urgentLabel(home.event_date)}</div>}
       <div className="card-top">
-        <span className={"ribbon "+(past?"done":(isFull?"full":"open"))}>{past?"จบแล้ว":(isFull?"ครบแล้ว":"ว่าง "+(need-filled))}</span>
+        <span className={"ribbon "+(past?"done":(isFull?"full":"open"))}>{past?"จบแล้ว":(noAssist?"ไม่ต้องการผู้ช่วย":(isFull?"ครบแล้ว":"ว่าง "+(need-filled)))}</span>
         <div className="datebig"><span className="d">{day}</span><span className="mo">{mo}</span></div>
         <div className="dow">{dow}</div>
         <div className="ctitle">{home.title||home.host_name}</div>
@@ -542,8 +542,8 @@ function EventCard({home, signups, guests, db, onChange, toast}){
         <HomeInfo home={home}/>
       </div>
       <div className="capbar-wrap">
-        <div className="capbar-head"><span>ผู้ช่วย (Assist)</span><span><b>{filled}</b> / {need}{filled>need?" · +"+(filled-need)+" สำรอง":""}</span></div>
-        <div className="slots">{slots.length?slots:<span className="slot"/>}</div>
+        <div className="capbar-head"><span>ผู้ช่วย (Assist)</span><span>{noAssist?<><b>{filled}</b> คน · ไม่บังคับ</>:<><b>{filled}</b> / {need}{filled>need?" · +"+(filled-need)+" สำรอง":""}</>}</span></div>
+        {!noAssist && <div className="slots">{slots.length?slots:<span className="slot"/>}</div>}
       </div>
       <div className="assists">
         {list.length===0 && <div className="empty-assist">ยังไม่มีใครลงชื่อ · เป็นคนแรกเลย!</div>}
@@ -551,15 +551,15 @@ function EventCard({home, signups, guests, db, onChange, toast}){
           <div className="arow" key={s.id}>
             <span className="ava">{initials(s.assist_name)}</span>
             <span className="nm">{s.assist_name}</span>
-            {idx>=need && <span className="chip wait">สำรอง</span>}
+            {need>0 && idx>=need && <span className="chip wait">สำรอง</span>}
             <button className="xbtn" title="ถอนชื่อ" onClick={()=>remove(s.id)}><SVG d={I.x} size={15}/></button>
           </div>
         ))}
       </div>
       {!past && <div className="card-foot">
-        {open ? <SignForm full={isFull} onSubmit={add} onCancel={()=>setOpen(false)}/>
+        {open ? <SignForm full={!noAssist&&isFull} onSubmit={add} onCancel={()=>setOpen(false)}/>
           : <button className="btn btn-amber" style={{width:"100%",justifyContent:"center"}} onClick={()=>setOpen(true)}>
-              <SVG d={I.plus} size={16}/>{isFull?"ลงชื่อเป็นสำรอง":"ลงชื่อช่วยงาน"}</button>}
+              <SVG d={I.plus} size={16}/>{!noAssist&&isFull?"ลงชื่อเป็นสำรอง":"ลงชื่อช่วยงาน"}</button>}
         <div style={{display:"flex",gap:8,marginTop:8}}>
           <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGOpen(true)}>
             <SVG d={I.users} size={15}/>รายละเอียดแขก{glist.length>0?` · ${glist.length}G ${glist.filter(g=>g.registered).length}R`:" / สรุป G·R"}</button>
@@ -578,16 +578,18 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
   const [f,setF]=useState(edit
     ? {host_name:home.host_name||"",host_group:home.host_group==null?"":String(home.host_group),title:home.title||"",kind:home.kind||"Home",
        event_date:home.event_date||"",time_slot:knownSlot?home.time_slot:"อื่นๆ",slotOther:knownSlot?"":(home.time_slot||""),
-       channel:home.channel||"Online-Zoom",address:home.address||"",assists_needed:home.assists_needed||9,
+       channel:home.channel||"Online-Zoom",address:home.address||"",assists_needed:(home.assists_needed==null?9:home.assists_needed),
        host_contact:home.host_contact||"",note:home.note||"",intro_leader:home.intro_leader||"",zoom_manager:home.zoom_manager||""}
     : {host_name:defaultHost||"",host_group:"",title:"",kind:"Home",event_date:"",time_slot:SLOT_EVENING,slotOther:"",
        channel:"Online-Zoom",address:"",assists_needed:9,host_contact:"",note:"",intro_leader:"",zoom_manager:""});
   const [busy,setBusy]=useState(false); const set=(k,v)=>setF(s=>({...s,[k]:v}));
+  /* เปลี่ยนประเภท: ตอนสร้างใหม่ Home ตั้ง 9, Event/Call Out ตั้ง 0 (ปรับเองได้) */
+  const setKind=(k)=>setF(s=>({...s,kind:k,...(edit?{}:{assists_needed:k==="Home"?9:0})}));
   const onsite=/onsite/i.test(f.channel); const ok=f.host_name.trim()&&f.event_date;
   const save=async()=>{ if(!ok) return; setBusy(true);
     try{ const slot=f.time_slot==="อื่นๆ"?(f.slotOther.trim()||"อื่นๆ"):f.time_slot;
       const payload={ host_name:f.host_name.trim(), host_group:(f.host_group===""?null:parseInt(f.host_group)), title:f.title.trim()||null, kind:f.kind||"Home", event_date:f.event_date, time_slot:slot,
-        channel:f.channel, address:f.address.trim()||null, assists_needed:Math.min(9,Math.max(1,parseInt(f.assists_needed)||9)),
+        channel:f.channel, address:f.address.trim()||null, assists_needed:Math.min(9,Math.max(0,parseInt(f.assists_needed)||0)),
         host_contact:f.host_contact.trim()||null, note:f.note.trim()||null, intro_leader:f.intro_leader.trim()||null, zoom_manager:f.zoom_manager.trim()||null };
       if(edit){ await db.updateHome(home.id,payload); toast("บันทึกการแก้ไขแล้ว"); }
       else{ await db.createHome({...payload, completed:false, result_g:null, result_r:null}); toast("สร้างงาน Home เรียบร้อย"); }
@@ -601,9 +603,9 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
         <div className="modal-b">
           <div className="field"><label>ประเภทงาน</label>
             <div className="seg">
-              <button type="button" className={"segbtn"+(f.kind==="Home"?" on":"")} onClick={()=>set("kind","Home")}><SVG d={I.cal} size={15}/>Home</button>
-              <button type="button" className={"segbtn ev"+(f.kind==="Event"?" on":"")} onClick={()=>set("kind","Event")}><SVG d={I.star} size={15}/>Event</button>
-              <button type="button" className={"segbtn co"+(f.kind==="Call Out"?" on":"")} onClick={()=>set("kind","Call Out")}><SVG d={I.phone} size={15}/>Call Out</button>
+              <button type="button" className={"segbtn"+(f.kind==="Home"?" on":"")} onClick={()=>setKind("Home")}><SVG d={I.cal} size={15}/>Home</button>
+              <button type="button" className={"segbtn ev"+(f.kind==="Event"?" on":"")} onClick={()=>setKind("Event")}><SVG d={I.star} size={15}/>Event</button>
+              <button type="button" className={"segbtn co"+(f.kind==="Call Out"?" on":"")} onClick={()=>setKind("Call Out")}><SVG d={I.phone} size={15}/>Call Out</button>
             </div></div>
           <div className="two">
             <div className="field"><label>{f.kind==="Event"?"ผู้จัด Event (Host) *":"ผู้จัด Home (Host) *"}</label>
@@ -632,8 +634,8 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
           <div className="two">
             <div className="field"><label>Channel</label>
               <select className="sel" value={f.channel} onChange={e=>set("channel",e.target.value)}>{CHANNELS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-            <div className="field"><label>จำนวน Assist ที่เปิดรับ (สูงสุด 9)</label>
-              <input className="inp" type="number" min="1" max="9" value={f.assists_needed} onChange={e=>set("assists_needed",e.target.value)} /></div>
+            <div className="field"><label>จำนวน Assist ที่เปิดรับ (0–9 · Event ใส่ 0 ได้)</label>
+              <input className="inp" type="number" min="0" max="9" value={f.assists_needed} onChange={e=>set("assists_needed",e.target.value)} /></div>
           </div>
           <div className="field"><label>{onsite?"ที่อยู่ (Onsite) *":"Address (ถ้าเป็น Onsite)"}</label>
             <input className="inp" value={f.address} placeholder={onsite?"กรอกสถานที่จัดงาน":"เว้นว่างได้ถ้าออนไลน์"} onChange={e=>set("address",e.target.value)} /></div>
@@ -920,7 +922,7 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
                   {h.completed && <span style={{fontSize:12,color:"var(--green-deep)",fontWeight:600}}> · จบแล้ว{resultText(h)?" ("+resultText(h)+")":""}</span>}
                   {!h.completed && isPast(h.event_date) && <span style={{fontSize:12,color:"var(--muted)",fontWeight:500}}> · เลยวันแล้ว</span>}</h4>
                   <div className="sub">{h.host_group?"กลุ่ม "+h.host_group+" · ":""}{h.time_slot||""} · {h.channel||""}{h.address?" · "+h.address:""}</div></div>
-                <div className="hc-count"><div className="n">{list.length}/{h.assists_needed||9}</div><div className="l">Assist</div></div>
+                <div className="hc-count"><div className="n">{list.length}/{h.assists_needed==null?9:h.assists_needed}</div><div className="l">Assist</div></div>
               </div>
               <div className="hostcard-b">
                 {list.length===0?<span className="empty-assist" style={{padding:"4px 2px"}}>ยังไม่มีใครลงชื่อ</span>
@@ -952,7 +954,7 @@ function critStats(homes, hostName){
   const key=nrm(hostName); const mine=homes.filter(h=>nrm(h.host_name)===key);
   const cnt=k=>mine.filter(h=>(h.kind||"Home")===k).length;
   const sucCnt=k=>mine.filter(h=>(h.kind||"Home")===k&&isSuccessHome(h)).length;
-  const guest=mine.reduce((n,h)=>n+(h.result_g||0),0);
+  const guest=mine.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0);
   const reg=mine.reduce((n,h)=>n+(h.result_r||0),0);
   const orgSuccess=mine.filter(h=>(h.kind||"Home")==="Home"&&isSuccessHome(h)).length;
   const c1=orgSuccess>=CRIT_ORG, c2=guest>=CRIT_GUEST, c3=reg>=CRIT_REG;
@@ -1021,7 +1023,7 @@ function DashboardView({homes, signups}){
   /* ---- รวมสถิติฝั่งผู้จัด Home ---- */
   const hostMap={};
   homes.forEach(h=>{ const k=nrm(h.host_name); const o=hostMap[k]||(hostMap[k]={name:k,homes:0,done:0,g:0,r:0,list:[]});
-    o.homes++; o.list.push(h); if(h.completed){ o.done++; o.g+=(h.result_g||0); o.r+=(h.result_r||0); } });
+    o.homes++; o.list.push(h); if(h.completed){ o.done++; o.g+=((h.kind||"Home")==="Call Out"?0:(h.result_g||0)); o.r+=(h.result_r||0); } });
   const hostRows=Object.values(hostMap);
   /* ---- รวมสถิติฝั่งผู้ช่วย Assist ---- */
   const assistMap={};
@@ -1030,7 +1032,7 @@ function DashboardView({homes, signups}){
   const assistRows=Object.values(assistMap);
   /* ---- ยอดรวม ---- */
   const doneHomes=homes.filter(h=>h.completed);
-  const totalG=doneHomes.reduce((n,h)=>n+(h.result_g||0),0);
+  const totalG=doneHomes.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0);
   const totalR=doneHomes.reduce((n,h)=>n+(h.result_r||0),0);
   /* ---- แยกตามประเภท Home / Event ---- */
   const grOf=(arr)=>arr.reduce((o,h)=>(h.completed?{g:o.g+(h.result_g||0),r:o.r+(h.result_r||0),done:o.done+1}:o),{g:0,r:0,done:0});
@@ -1060,7 +1062,7 @@ function DashboardView({homes, signups}){
         <p>สถิติสะสมจากทุกงานในระบบ · กดดูรายบุคคลได้ที่ช่องค้นหาด้านล่าง</p></div></div>
       <div className="statgrid">
         <div className="stat"><div className="k"><SVG d={I.cal} size={15}/>งานทั้งหมด</div><div className="v">{homes.length}</div><div className="s">จบแล้ว {doneHomes.length} · กำลังจะถึง {homes.length-doneHomes.length}</div></div>
-        <div className="stat amber"><div className="k"><SVG d={I.users} size={15}/>Guest (แขกที่มา)</div><div className="v">{totalG}</div><div className="s">รวมจากงานที่จบแล้ว</div></div>
+        <div className="stat amber"><div className="k"><SVG d={I.users} size={15}/>Guest (แขกที่มา)</div><div className="v">{totalG}</div><div className="s">งานที่จบแล้ว · ไม่รวม Call Out</div></div>
         <div className="stat green"><div className="k"><SVG d={I.flag} size={15}/>Register (ลงทะเบียน)</div><div className="v">{totalR}</div><div className="s">รวมจากงานที่จบแล้ว</div></div>
         <div className="stat"><div className="k"><SVG d={I.user} size={15}/>ผู้จัดงาน</div><div className="v">{hostRows.length}</div><div className="s">คนที่เคยเปิดงาน</div></div>
         <div className="stat"><div className="k"><SVG d={I.star} size={15}/>การลงชื่อ Assist</div><div className="v">{signups.length}</div><div className="s">{assistRows.length} คนไม่ซ้ำ</div></div>
@@ -1073,7 +1075,7 @@ function DashboardView({homes, signups}){
         <div className="stat" style={{background:"linear-gradient(150deg,#EDE7FB,#fff)"}}><div className="k"><SVG d={I.star} size={15}/>งาน Event</div><div className="v" style={{color:"#5B3FAE"}}>{eventKind.length}</div>
           <div className="s">จบแล้ว {eGR.done} · <b>{eGR.g}</b> Guest · <b>{eGR.r}</b> Reg</div></div>
         <div className="stat amber"><div className="k"><SVG d={I.phone} size={15}/>งาน Call Out</div><div className="v">{callKind.length}</div>
-          <div className="s">จบแล้ว {cGR.done} · <b>{cGR.g}</b> Guest · <b>{cGR.r}</b> Reg</div></div>
+          <div className="s">จบแล้ว {cGR.done} · <b>{cGR.g}</b> ติดต่อ · <b>{cGR.r}</b> ลงทะเบียน <span style={{opacity:.7}}>(ไม่นับ Guest)</span></div></div>
       </div>
 
       <div className="dash-cols">
