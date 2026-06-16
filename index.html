@@ -430,18 +430,24 @@ async function importSeed(db){ for(const r of SEED){ const id=await db.createHom
 /* ===== Change-log wrapper (ห่อ db ให้บันทึก log ทุกการเปลี่ยนแปลง) ===== */
 const FIELD_LABEL={completed:"สถานะจบงาน",result_g:"Guest",result_r:"ลงทะเบียน",host_name:"ชื่อผู้จัด",host_group:"กลุ่ม",title:"หัวข้อ",event_date:"วันที่",time_slot:"เวลา",kind:"ประเภท",channel:"ช่องทาง",address:"สถานที่",assists_needed:"จำนวน Assist",host_contact:"ติดต่อ Host",note:"หมายเหตุ",intro_leader:"IL",zoom_manager:"ZM",assist_name:"ชื่อผู้ช่วย",guest_name:"ชื่อแขก",nickname:"ชื่อเล่น",contact:"เบอร์",contact_time:"เวลาสะดวก",inviter:"ผู้เชิญ",interested:"ความสนใจ",whats_so:"What's so",registered:"ลงทะเบียน",reflect_work:"สรุป:Work",reflect_nowork:"สรุป:ไม่Work",reflect_missing:"สรุป:Missing",reflect_next:"สรุป:Next",reflect_value:"สรุป:คุณค่า",reflect_praise:"สรุป:ชื่นชม",reflect_completion:"สรุป:Completion",reflect_breakthrough:"สรุป:Breakthrough"};
 function patchDesc(p){ return Object.keys(p||{}).map(k=>FIELD_LABEL[k]||k).join(", "); }
-function withLog(db){
+function withLog(db, ctx){
+  const data=()=>(ctx?ctx():{})||{};
+  const shortD=(s)=>{ try{ const f=fmtDate(s); return f.day+" "+f.mo; }catch(e){ return s||"?"; } };
+  const homeLbl=(h)=> h?`การ์ด ${h.host_name||"?"} · ${shortD(h.event_date)}`:"(ไม่พบการ์ด)";
+  const findHome=(id)=>(data().homes||[]).find(h=>h.id===id);
+  const homeOfSignup=(id)=>{ const s=(data().signups||[]).find(x=>x.id===id); return s?findHome(s.home_id):null; };
+  const homeOfGuest=(id)=>{ const g=(data().guests||[]).find(x=>x.id===id); return g?findHome(g.home_id):null; };
   const wrap=(action, fn, describe)=> async(...args)=>{ const res=await fn(...args); try{ const d=describe(res,...args); if(d!==null) await db.writeLog(action,d); }catch(e){} return res; };
   return Object.assign({}, db, {
-    createHome: wrap("สร้างงาน",  db.createHome.bind(db),  (res,h)=>`${h.kind||"Home"} · ${h.host_name||""} · ${h.event_date||""}`),
-    updateHome: wrap("แก้ไขงาน",  db.updateHome.bind(db),  (res,id,p)=>{ const ks=Object.keys(p||{}); if(ks.length&&ks.every(k=>k==="result_g"||k==="result_r")) return null; if(p&&"completed" in p) return p.completed?"ติ๊กจบงาน":"เปิดงานกลับ"; return "แก้ไข: "+patchDesc(p); }),
-    deleteHome: wrap("ลบงาน",     db.deleteHome.bind(db),  ()=>"ลบงานและข้อมูลที่เกี่ยวข้อง"),
-    createSignup: wrap("เพิ่มผู้ช่วย", db.createSignup.bind(db), (res,s)=>s.assist_name||""),
-    updateSignup: wrap("แก้ไขชื่อผู้ช่วย", db.updateSignup.bind(db), (res,id,p)=>p&&p.assist_name||"แก้ไข"),
-    deleteSignup: wrap("ถอนผู้ช่วย", db.deleteSignup.bind(db), ()=>"ถอนรายชื่อ"),
-    createGuest: wrap("เพิ่มแขก",  db.createGuest.bind(db), (res,g)=>g.guest_name||"(แถวว่าง)"),
-    updateGuest: wrap("แก้ไขแขก",  db.updateGuest.bind(db), (res,id,p)=> p&&"registered" in p ? (p.registered?"ติ๊กลงทะเบียน":"ยกเลิกลงทะเบียน") : "แก้ไข: "+patchDesc(p)),
-    deleteGuest: wrap("ลบแขก",     db.deleteGuest.bind(db), ()=>"ลบรายชื่อแขก"),
+    createHome: wrap("สร้างงาน",  db.createHome.bind(db),  (res,h)=>`${h.kind||"Home"} · การ์ด ${h.host_name||""} · ${shortD(h.event_date)}`),
+    updateHome: wrap("แก้ไขงาน",  db.updateHome.bind(db),  (res,id,p)=>{ const ks=Object.keys(p||{}); if(ks.length&&ks.every(k=>k==="result_g"||k==="result_r")) return null; const lbl=homeLbl(findHome(id)); const act=(p&&"completed" in p)?(p.completed?"ติ๊กจบงาน":"เปิดงานกลับ"):("แก้ไข: "+patchDesc(p)); return `${lbl} — ${act}`; }),
+    deleteHome: wrap("ลบงาน",     db.deleteHome.bind(db),  (res,id)=>`${homeLbl(findHome(id))} — ลบงานและข้อมูลที่เกี่ยวข้อง`),
+    createSignup: wrap("เพิ่มผู้ช่วย", db.createSignup.bind(db), (res,s)=>`${s.assist_name||""} · ${homeLbl(findHome(s.home_id))}`),
+    updateSignup: wrap("แก้ไขชื่อผู้ช่วย", db.updateSignup.bind(db), (res,id,p)=>`${(p&&p.assist_name)||"แก้ไข"} · ${homeLbl(homeOfSignup(id))}`),
+    deleteSignup: wrap("ถอนผู้ช่วย", db.deleteSignup.bind(db), (res,id)=>`${homeLbl(homeOfSignup(id))}`),
+    createGuest: wrap("เพิ่มแขก",  db.createGuest.bind(db), (res,g)=>`${homeLbl(findHome(g.home_id))}`),
+    updateGuest: wrap("แก้ไขแขก",  db.updateGuest.bind(db), (res,id,p)=>{ const act=(p&&"registered" in p)?(p.registered?"ติ๊กลงทะเบียน":"ยกเลิกลงทะเบียน"):("แก้ไข: "+patchDesc(p)); return `${act} · ${homeLbl(homeOfGuest(id))}`; }),
+    deleteGuest: wrap("ลบแขก",     db.deleteGuest.bind(db), (res,id)=>`ลบรายชื่อ · ${homeLbl(homeOfGuest(id))}`),
   });
 }
 
@@ -1564,7 +1570,8 @@ function LogModal({db, onClose}){
 /* ===== app shell ===== */
 function App(){
   const [cfg,setCfg]=useState(loadCfg());
-  const [db,setDb]=useState(()=>{ const c=loadCfg(); return withLog(c?makeSupabaseDB(c):makeDemoDB()); });
+  const dataRef=useRef({homes:[],signups:[],guests:[]});
+  const [db,setDb]=useState(()=>{ const c=loadCfg(); return withLog(c?makeSupabaseDB(c):makeDemoDB(), ()=>dataRef.current); });
   const [tab,setTab]=useState("board");
   const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]);
   const [loading,setLoading]=useState(true); const [showCreate,setShowCreate]=useState(false); const [showLog,setShowLog]=useState(false);
@@ -1572,7 +1579,7 @@ function App(){
   const focusedRef=useRef(false);
   const [toastMsg,setToastMsg]=useState(""); const toastT=useRef();
   const toast=useCallback((m)=>{ setToastMsg(m); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToastMsg(""),2600); },[]);
-  const refresh=useCallback(async()=>{ try{ const [h,s,g]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests()]); setHomes(h); setSignups(s); setGuests(g); }
+  const refresh=useCallback(async()=>{ try{ const [h,s,g]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests()]); setHomes(h); setSignups(s); setGuests(g); dataRef.current={homes:h,signups:s,guests:g}; }
     catch(e){ toast("โหลดข้อมูลไม่สำเร็จ: "+(e.message||e)); } setLoading(false); },[db,toast]);
   useEffect(()=>{ setLoading(true); refresh(); const off=db.subscribe(()=>refresh()); return off; },[db,refresh]);
   useEffect(()=>{ const f=()=>refresh(); window.addEventListener("focus",f); const iv=setInterval(refresh,20000);
@@ -1588,8 +1595,8 @@ function App(){
       if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"),1700); }
     },450); return ()=>clearTimeout(t);
   },[loading,focusId,homes]);
-  const connect=()=>{ const c=loadCfg(); setCfg(c); setDb(withLog(makeSupabaseDB(c))); setTab("board"); };
-  const disconnect=()=>{ setCfg(null); setDb(withLog(makeDemoDB())); };
+  const connect=()=>{ const c=loadCfg(); setCfg(c); setDb(withLog(makeSupabaseDB(c), ()=>dataRef.current)); setTab("board"); };
+  const disconnect=()=>{ setCfg(null); setDb(withLog(makeDemoDB(), ()=>dataRef.current)); };
   const upcomingN=homes.filter(h=>!isArchived(h)).length, pastN=homes.filter(isArchived).length;
   const TABS=[{id:"board",label:"บอร์ด",n:upcomingN},{id:"archive",label:"Achieve",n:pastN},{id:"dash",label:"Dashboard"},{id:"members",label:"เกณฑ์รายคน"},{id:"host",label:"มุมมอง Host"}];
   return (
