@@ -962,9 +962,19 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
 
 /* ตารางสรุปแขกในมุมมอง Host — รวมแขกจากทุกการ์ด พร้อมแหล่งที่มา (HI/CI/ES) */
 function HostGuestTable({mine, guests, db, onChange, toast}){
+  const [fInt,setFInt]=useState(""); const [fReg,setFReg]=useState(""); const [fSrc,setFSrc]=useState(""); const [q,setQ]=useState("");
   const ids=new Set(mine.map(h=>h.id)); const homeById={}; mine.forEach(h=>homeById[h.id]=h);
-  const rows=(guests||[]).filter(g=>ids.has(g.home_id)).map(g=>({g,home:homeById[g.home_id]}))
+  const all=(guests||[]).filter(g=>ids.has(g.home_id)).map(g=>({g,home:homeById[g.home_id]}))
     .sort((a,b)=>((b.home.event_date||"").localeCompare(a.home.event_date||""))||((a.g.created_at||"").localeCompare(b.g.created_at||"")));
+  const qq=q.trim().toLowerCase();
+  const rows=all.filter(r=>{
+    if(fInt){ if(fInt==="ยังไม่ระบุ"){ if(r.g.interested) return false; } else if((r.g.interested||"")!==fInt) return false; }
+    if(fReg){ if(fReg==="yes"&&!r.g.registered) return false; if(fReg==="no"&&r.g.registered) return false; }
+    if(fSrc && (r.home.kind||"Home")!==fSrc) return false;
+    if(qq){ const hay=((r.g.guest_name||"")+" "+(r.g.nickname||"")+" "+(r.g.whats_so||"")).toLowerCase(); if(!hay.includes(qq)) return false; }
+    return true;
+  });
+  const active=fInt||fReg||fSrc||q;
   const reg=rows.filter(r=>r.g.registered).length;
   const toggleReg=async(g)=>{ const v=!g.registered;
     try{ await db.updateGuest(g.id,{registered:v});
@@ -975,9 +985,24 @@ function HostGuestTable({mine, guests, db, onChange, toast}){
     <div className="panel">
       <h3 style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
         <span style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.users} size={18}/>ตารางสรุปแขก</span>
-        <span className="lead-sub">รวม {rows.length} คน · ลงทะเบียน {reg}</span></h3>
-      <p className="lead">รวมแขกจากทุกการ์ดของคุณ · ติ๊กลงทะเบียนได้ · แหล่งที่มาตามประเภทการ์ด</p>
-      {rows.length===0 ? <div className="empty-assist">ยังไม่มีรายชื่อแขก — เพิ่มได้ที่ปุ่ม “รายละเอียดแขก” บนการ์ด</div> :
+        <span className="lead-sub">แสดง {rows.length} / {all.length} คน · ลงทะเบียน {reg}</span></h3>
+      <p className="lead">รวมแขกจากทุกการ์ดของคุณ · ติ๊กลงทะเบียนได้ · กรองตามหัวข้อได้</p>
+      {all.length>0 && <div className="filterbar" style={{marginBottom:14}}>
+        <div className="field"><label><SVG d={I.search} size={13}/>ค้นหาชื่อ/What's so</label>
+          <input className="inp" value={q} placeholder="พิมพ์คำค้น" onChange={e=>setQ(e.target.value)} /></div>
+        <div className="field"><label>ความสนใจ</label>
+          <select className="sel" value={fInt} onChange={e=>setFInt(e.target.value)}>
+            <option value="">— ทั้งหมด —</option><option value="สนใจ">สนใจ</option><option value="ไม่สนใจ">ไม่สนใจ</option><option value="ยังไม่ระบุ">ยังไม่ระบุ</option></select></div>
+        <div className="field"><label>ลงทะเบียน</label>
+          <select className="sel" value={fReg} onChange={e=>setFReg(e.target.value)}>
+            <option value="">— ทั้งหมด —</option><option value="yes">ลงทะเบียนแล้ว</option><option value="no">ยังไม่ลง</option></select></div>
+        <div className="field"><label>แหล่งที่มา</label>
+          <select className="sel" value={fSrc} onChange={e=>setFSrc(e.target.value)}>
+            <option value="">— ทั้งหมด —</option>{KINDS.map(k=><option key={k} value={k}>{SRC_LABEL[k]||k}</option>)}</select></div>
+        {active && <button className="btn btn-sm" onClick={()=>{setFInt("");setFReg("");setFSrc("");setQ("");}}><SVG d={I.x} size={14}/>ล้าง</button>}
+      </div>}
+      {all.length===0 ? <div className="empty-assist">ยังไม่มีรายชื่อแขก — เพิ่มได้ที่ปุ่ม “รายละเอียดแขก” บนการ์ด</div> :
+       rows.length===0 ? <div className="empty-assist">ไม่พบแขกตามตัวกรอง</div> :
         <div className="gwrap" style={{maxHeight:"none"}}>
           <table className="sumtbl">
             <thead><tr><th>#</th><th>ชื่อแขก</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th>ลงทะเบียน</th><th>แหล่งที่มา</th><th>วันที่</th></tr></thead>
@@ -1004,7 +1029,7 @@ function HostReflectTable({mine}){
   const rows=mine.filter(h=>REFLECT_FIELDS.some(f=>h[f.k])).sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||""));
   return (
     <div className="panel">
-      <h3 style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.star} size={18}/>ตารางสรุปสิ่งที่ Work / ไม่ Work (Reflection)</h3>
+      <h3 style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.star} size={18}/>สิ่งที่ได้จากการจัด Home</h3>
       <p className="lead">รวมสรุปกิจกรรมที่ Host กรอกไว้ตอนจบงาน · เลื่อนตารางแนวนอนเพื่อดูครบทุกหัวข้อ</p>
       {rows.length===0 ? <div className="empty-assist">ยังไม่มีการกรอกสรุปกิจกรรม — กรอกได้ที่ปุ่ม “รายละเอียดแขก” บนการ์ด (เลื่อนลงส่วนสรุปกิจกรรม)</div> :
         <div className="gwrap" style={{maxHeight:"none"}}>
