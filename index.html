@@ -97,6 +97,9 @@
   .sumtbl tr:last-child td{border-bottom:none}
   .sumtbl tr.reg{background:var(--green-tint)}
   .sumtbl .src{font-weight:600;white-space:nowrap}
+  .reflecttbl{min-width:1100px}
+  .reflecttbl th{font-size:11.5px}
+  .reflecttbl .rcell{white-space:normal;min-width:150px;max-width:230px;vertical-align:top;font-size:12.5px;line-height:1.45;color:var(--ink-soft)}
   .sumtbl input[type=checkbox]{width:17px;height:17px;accent-color:var(--green-deep);cursor:pointer}
   .ipill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
   .ipill.yes{background:var(--green-tint);color:var(--green-deep)}
@@ -996,6 +999,31 @@ function HostGuestTable({mine, guests, db, onChange, toast}){
     </div>
   );
 }
+/* ตารางสรุป Reflection (สิ่งที่ Work / ไม่ Work ฯลฯ) ของแต่ละกิจกรรม */
+function HostReflectTable({mine}){
+  const rows=mine.filter(h=>REFLECT_FIELDS.some(f=>h[f.k])).sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||""));
+  return (
+    <div className="panel">
+      <h3 style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.star} size={18}/>ตารางสรุปสิ่งที่ Work / ไม่ Work (Reflection)</h3>
+      <p className="lead">รวมสรุปกิจกรรมที่ Host กรอกไว้ตอนจบงาน · เลื่อนตารางแนวนอนเพื่อดูครบทุกหัวข้อ</p>
+      {rows.length===0 ? <div className="empty-assist">ยังไม่มีการกรอกสรุปกิจกรรม — กรอกได้ที่ปุ่ม “รายละเอียดแขก” บนการ์ด (เลื่อนลงส่วนสรุปกิจกรรม)</div> :
+        <div className="gwrap" style={{maxHeight:"none"}}>
+          <table className="sumtbl reflecttbl">
+            <thead><tr><th>วันที่</th><th>งาน</th>{REFLECT_FIELDS.map(f=><th key={f.k}>{f.label}</th>)}</tr></thead>
+            <tbody>
+              {rows.map(h=>{ const {day,mo}=fmtDate(h.event_date);
+                return (
+                  <tr key={h.id}>
+                    <td style={{whiteSpace:"nowrap",verticalAlign:"top"}}>{day} {mo}</td>
+                    <td style={{whiteSpace:"nowrap",verticalAlign:"top"}}><KindBadge kind={h.kind}/><div style={{fontWeight:600,marginTop:4}}>{h.title||h.host_name}</div></td>
+                    {REFLECT_FIELDS.map(f=><td key={f.k} className="rcell">{h[f.k]||<span style={{color:"var(--muted)"}}>—</span>}</td>)}
+                  </tr>); })}
+            </tbody>
+          </table>
+        </div>}
+    </div>
+  );
+}
 /* ตารางสรุปกิจกรรมแต่ละครั้งของ Host + ฟิลเตอร์ */
 function HostActivityTable({mine, signups}){
   const [fKind,setFKind]=useState(""); const [fStatus,setFStatus]=useState("");
@@ -1095,6 +1123,7 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
           ); })}
       </div>}
       {q && mine.length>0 && <div style={{marginTop:16}}><HostActivityTable mine={mine} signups={signups} /></div>}
+      {q && mine.length>0 && <div style={{marginTop:16}}><HostReflectTable mine={mine} /></div>}
       {completeFor && <CompleteModal home={completeFor} db={db} onChange={onChange} toast={toast} onClose={()=>setCompleteFor(null)} />}
       {guestFor && <GuestModal home={guestFor} guests={guests||[]} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
       {editFor && <CreateModal home={editFor} db={db} onChange={onChange} toast={toast} onClose={()=>setEditFor(null)} />}
