@@ -660,7 +660,7 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
 function CompleteModal({home, db, onChange, toast, onClose}){
   const [g,setG]=useState(home.result_g==null?"":String(home.result_g));
   const [r,setR]=useState(home.result_r==null?"":String(home.result_r));
-  const [busy,setBusy]=useState(false);
+  const [busy,setBusy]=useState(false); const isCall=(home.kind||"Home")==="Call Out";
   const save=async()=>{ setBusy(true);
     try{ await db.updateHome(home.id,{completed:true, result_g:g===""?0:(parseInt(g)||0), result_r:r===""?0:(parseInt(r)||0)});
       toast("บันทึกผลแล้ว → ย้ายไป Achieve"); onChange(); onClose();
@@ -669,15 +669,15 @@ function CompleteModal({home, db, onChange, toast, onClose}){
     <div className="scrim" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal sm">
         <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.flag} size={17}/></div>
-          <div><h3>บันทึกผล Home</h3><p>{home.title||home.host_name} · {fmtDate(home.event_date).day} {fmtDate(home.event_date).mo}</p></div></div>
+          <div><h3>บันทึกผล {home.kind||"Home"}</h3><p>{home.title||home.host_name} · {fmtDate(home.event_date).day} {fmtDate(home.event_date).mo}</p></div></div>
         <div className="modal-b">
           <div className="two">
-            <div className="field"><label>G — Guest (จำนวนแขก)</label>
+            <div className="field"><label>{isCall?"จำนวนที่ติดต่อ (ไม่นับ Guest)":"G — Guest (จำนวนแขก)"}</label>
               <input className="inp" type="number" min="0" value={g} placeholder="0" autoFocus onChange={e=>setG(e.target.value)} /></div>
-            <div className="field"><label>R — Register (สมัคร)</label>
+            <div className="field"><label>R — Register (ลงทะเบียน)</label>
               <input className="inp" type="number" min="0" value={r} placeholder="0" onChange={e=>setR(e.target.value)} /></div>
           </div>
-          <div className="note green"><SVG d={I.check} size={16}/><div>เมื่อบันทึก งานจะถูกทำเครื่องหมายว่าจบแล้ว และย้ายไปแท็บ Achieve พร้อมผล <b>{(g||0)}G {(r||0)}R</b></div></div>
+          <div className="note green"><SVG d={I.check} size={16}/><div>เมื่อบันทึก งานจะถูกทำเครื่องหมายว่าจบแล้ว และย้ายไปแท็บ Achieve พร้อมผล <b>{isCall?(g||0)+" ติดต่อ · "+(r||0)+"R":(g||0)+"G "+(r||0)+"R"}</b></div></div>
         </div>
         <div className="modal-f">
           <button className="btn" onClick={onClose}>ยกเลิก</button>
@@ -849,7 +849,7 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
   const past=homes.filter(isArchived).sort((a,b)=>b.event_date.localeCompare(a.event_date));
   const totalHelpers=past.reduce((n,h)=>n+signups.filter(s=>s.home_id===h.id).length,0);
   const done=past.filter(h=>h.completed);
-  const sumG=done.reduce((n,h)=>n+(h.result_g||0),0), sumR=done.reduce((n,h)=>n+(h.result_r||0),0);
+  const sumG=done.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0), sumR=done.reduce((n,h)=>n+(h.result_r||0),0);
   return (
     <div className="wrap page">
       <div className="sec-h"><div><div className="eyebrow">Achieve · งานที่ผ่านมา</div>
@@ -932,7 +932,7 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
                 {list.length===0?<span className="empty-assist" style={{padding:"4px 2px"}}>ยังไม่มีใครลงชื่อ</span>
                   :list.map(s=>(<span className="tagperson" key={s.id}><span className="ava" style={{width:22,height:22}}>{initials(s.assist_name)}</span>{s.assist_name}</span>))}
                 <div style={{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}}>
-                  <button className="btn btn-sm btn-amber" onClick={()=>setGuestFor(h)}><SVG d={I.users} size={14}/>รายละเอียดแขก{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);return gl.length?` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`:"";})()}</button>
+                  <button className="btn btn-sm btn-amber" onClick={()=>setGuestFor(h)}><SVG d={I.users} size={14}/>{(h.kind||"Home")==="Call Out"?"ติดต่อ":"รายละเอียดแขก"}{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);const cl=(h.kind||"Home")==="Call Out";return gl.length?(cl?` · ${gl.length} · ${gl.filter(x=>x.registered).length}R`:` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`):"";})()}</button>
                   <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไขงาน</button>
                   {h.completed ? <button className="btn btn-sm" onClick={()=>reopen(h)}>เปิดงานกลับ</button>
                     : <button className="btn btn-sm btn-primary" onClick={()=>setCompleteFor(h)}><SVG d={I.flag} size={14}/>จบงาน + ใส่ผล</button>}
