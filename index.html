@@ -417,7 +417,10 @@ function urgentLabel(s){ const d=daysUntil(s); return d===0?"วันนี้"
 function fmtDate(s){ const d=new Date(s+"T00:00:00");
   return { day:d.getDate(), mo:new Intl.DateTimeFormat("th-TH",{month:"short"}).format(d), dow:new Intl.DateTimeFormat("th-TH",{weekday:"long"}).format(d) }; }
 function initials(n){ n=(n||"").trim(); return n?n.slice(0,1):"?"; }
-function resultText(h){ if(h.result_g==null&&h.result_r==null) return ""; return (h.result_g||0)+"G "+(h.result_r||0)+"R"; }
+function resultText(h){ if(h.result_g==null&&h.result_r==null) return "";
+  if((h.kind||"Home")==="Call Out") return (h.result_g||0)+" ติดต่อ · "+(h.result_r||0)+"R";
+  return (h.result_g||0)+"G "+(h.result_r||0)+"R"; }
+function guestLabel(kind){ return (kind||"Home")==="Call Out"?"ติดต่อ":"Guest"; }
 function cardLink(id){ return location.origin+location.pathname+"#home="+id; }
 async function shareHome(home, toast){ const url=cardLink(home.id); const title=(home.title||home.host_name)+" · ILP69 Home";
   if(navigator.share){ try{ await navigator.share({title,url}); return; }catch(e){ if(e&&e.name==="AbortError") return; } }
@@ -562,7 +565,7 @@ function EventCard({home, signups, guests, db, onChange, toast}){
               <SVG d={I.plus} size={16}/>{!noAssist&&isFull?"ลงชื่อเป็นสำรอง":"ลงชื่อช่วยงาน"}</button>}
         <div style={{display:"flex",gap:8,marginTop:8}}>
           <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGOpen(true)}>
-            <SVG d={I.users} size={15}/>รายละเอียดแขก{glist.length>0?` · ${glist.length}G ${glist.filter(g=>g.registered).length}R`:" / สรุป G·R"}</button>
+            <SVG d={I.users} size={15}/>{(home.kind||"Home")==="Call Out"?"รายชื่อติดต่อ":"รายละเอียดแขก"}{glist.length>0?((home.kind||"Home")==="Call Out"?` · ${glist.length} ติดต่อ · ${glist.filter(g=>g.registered).length}R`:` · ${glist.length}G ${glist.filter(g=>g.registered).length}R`):""}</button>
           <button className="btn btn-ghost btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(home,toast)}><SVG d={I.share} size={15}/></button>
         </div>
       </div>}
@@ -720,25 +723,26 @@ function GuestModal({home, guests, db, onChange, toast, onClose}){
   const [il,setIl]=useState(home.intro_leader||""); const [zm,setZm]=useState(home.zoom_manager||"");
   const [busy,setBusy]=useState(false);
   const G=list.length, R=list.filter(g=>g.registered).length;
+  const isCall=(home.kind||"Home")==="Call Out";
   const {day,mo,dow}=fmtDate(home.event_date);
   const recount=async(arr)=>{ try{ await db.updateHome(home.id,{result_g:arr.length,result_r:arr.filter(x=>x.registered).length}); }catch(e){} };
   const add=async()=>{ try{ await db.createGuest({home_id:home.id,guest_name:"",nickname:"",contact:"",contact_time:"",inviter:"",interested:"",whats_so:"",registered:false,note:""});
     await recount([...list,{registered:false}]); onChange(); }catch(e){ toast("เพิ่มไม่สำเร็จ: "+(e.message||e)); } };
   const saveHdr=async(patch)=>{ try{ await db.updateHome(home.id,patch); onChange(); }catch(e){} };
   const finish=async()=>{ setBusy(true); try{ await db.updateHome(home.id,{completed:true,result_g:G,result_r:R});
-      toast("บันทึก & จบงานแล้ว → Achieve ("+G+"G "+R+"R)"); onChange(); onClose(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); setBusy(false); } };
+      toast("บันทึก & จบงานแล้ว → Achieve ("+(isCall?G+" ติดต่อ · "+R+"R":G+"G "+R+"R")+")"); onChange(); onClose(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); setBusy(false); } };
   return (
     <div className="scrim" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal lg">
         <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.users} size={18}/></div>
-          <div style={{flex:1}}><h3>สรุปรายละเอียดแขก เข้าฟังการแนะนำ</h3>
-            <p>{home.title||home.host_name} · {dow} {day} {mo}{home.completed?" · จบแล้ว":""}</p></div>
+          <div style={{flex:1}}><h3>{isCall?"สรุปรายชื่อที่ติดต่อ (Call Out)":"สรุปรายละเอียดแขก เข้าฟังการแนะนำ"}</h3>
+            <p>{home.title||home.host_name} · {dow} {day} {mo}{home.completed?" · จบแล้ว":""}{isCall?" · ไม่นับเป็น Guest":""}</p></div>
           <button className="xbtn" onClick={onClose}><SVG d={I.x} size={18}/></button></div>
         <div className="modal-b">
           <div className="ghead">
             <div className="ginfo"><SVG d={I.cal} size={15}/><b>วันที่จัด:</b>&nbsp;{day} {mo} · {home.time_slot||""}</div>
             <div className="gsum">
-              <div className="b g"><div className="n">{G}</div><div className="l">จำนวนแขก (G)</div></div>
+              <div className="b g"><div className="n">{G}</div><div className="l">{isCall?"ติดต่อ (ไม่นับ G)":"จำนวนแขก (G)"}</div></div>
               <div className="b r"><div className="n">{R}</div><div className="l">ลงทะเบียน (R)</div></div>
             </div>
             <div className="field"><label>Introduction Leader</label>
@@ -760,8 +764,8 @@ function GuestModal({home, guests, db, onChange, toast, onClose}){
             </table>
           </div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,flexWrap:"wrap",gap:10}}>
-            <button className="btn btn-sm" onClick={add}><SVG d={I.plus} size={15}/>เพิ่มแขก</button>
-            <div className="lead-sub">รวม <b>{G}</b> แขก · ลงทะเบียน <b>{R}</b> · สนใจ {list.filter(g=>g.interested==="สนใจ").length} · ไม่สนใจ {list.filter(g=>g.interested==="ไม่สนใจ").length}</div>
+            <button className="btn btn-sm" onClick={add}><SVG d={I.plus} size={15}/>{isCall?"เพิ่มรายชื่อ":"เพิ่มแขก"}</button>
+            <div className="lead-sub">รวม <b>{G}</b> {isCall?"ติดต่อ":"แขก"} · ลงทะเบียน <b>{R}</b> · สนใจ {list.filter(g=>g.interested==="สนใจ").length} · ไม่สนใจ {list.filter(g=>g.interested==="ไม่สนใจ").length}</div>
           </div>
         </div>
         <div className="modal-f">
@@ -876,7 +880,7 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
                       </div>}
                   {db && <div className="card-foot" style={{paddingTop:0,display:"flex",gap:8}}>
                     <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGuestFor(h)}>
-                      <SVG d={I.users} size={15}/>แขก{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);return gl.length?` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`:"";})()}</button>
+                      <SVG d={I.users} size={15}/>{(h.kind||"Home")==="Call Out"?"ติดต่อ":"แขก"}{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);const cl=(h.kind||"Home")==="Call Out";return gl.length?(cl?` · ${gl.length} · ${gl.filter(x=>x.registered).length}R`:` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`):"";})()}</button>
                     <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไข</button>
                     <button className="btn btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(h,toast)}><SVG d={I.share} size={15}/></button>
                   </div>}
