@@ -614,7 +614,7 @@ function EventCard({home, signups, guests, db, onChange, toast}){
               <SVG d={I.plus} size={16}/>{!noAssist&&isFull?"ลงชื่อเป็นสำรอง":"ลงชื่อช่วยงาน"}</button>}
         <div style={{display:"flex",gap:8,marginTop:8}}>
           <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGOpen(true)}>
-            <SVG d={I.users} size={15}/>{(home.kind||"Home")==="Call Out"?"รายชื่อติดต่อ":"รายละเอียดแขก"}{glist.length>0?((home.kind||"Home")==="Call Out"?` · ${glist.length} ติดต่อ · ${glist.filter(g=>g.registered).length}R`:` · ${glist.length}G ${glist.filter(g=>g.registered).length}R`):""}</button>
+            <SVG d={I.users} size={15}/>{(home.kind||"Home")==="Call Out"?"รายชื่อติดต่อ":"รายละเอียดแขก"}{glist.length>0?((home.kind||"Home")==="Call Out"?` · ${glist.length} ติดต่อ · ${glist.filter(g=>g.registered).length}R`:` · ${glist.filter(g=>g.attended).length}G ${glist.filter(g=>g.registered).length}R`):""}</button>
           <button className="btn btn-ghost btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(home,toast)}><SVG d={I.share} size={15}/></button>
         </div>
       </div>}
@@ -746,8 +746,10 @@ function GuestRow({g, idx, db, onChange, toast, recount, list}){
   const setInt=(v)=>{ set("interested",v); persist({interested:v}); };
   const toggleReg=async()=>{ const v=!f.registered; set("registered",v);
     try{ await db.updateGuest(g.id,{registered:v}); await recount(list.map(x=>x.id===g.id?{...x,registered:v}:x)); onChange(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); } };
+  const toggleAtt=async()=>{ const v=!f.attended; set("attended",v);
+    try{ await db.updateGuest(g.id,{attended:v}); await recount(list.map(x=>x.id===g.id?{...x,attended:v}:x)); onChange(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); } };
   const del=async()=>{ try{ await db.deleteGuest(g.id); await recount(list.filter(x=>x.id!==g.id)); onChange(); toast("ลบแขกแล้ว"); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
-  const cls=f.registered?"reg":(f.interested==="ไม่สนใจ"?"no":"");
+  const cls=f.attended?"reg":(f.interested==="ไม่สนใจ"?"no":"");
   return (
     <tr className={cls}>
       <td className="num">{idx+1}</td>
@@ -759,6 +761,7 @@ function GuestRow({g, idx, db, onChange, toast, recount, list}){
       <td><select className="selint" value={f.interested||""} onChange={e=>setInt(e.target.value)}>
         {INTEREST.map(o=><option key={o} value={o}>{o||"—"}</option>)}</select></td>
       <td><input value={f.whats_so||""} placeholder="What's so" onChange={e=>set("whats_so",e.target.value)} onBlur={()=>blur("whats_so")} /></td>
+      <td className="ctr"><input type="checkbox" checked={!!f.attended} onChange={toggleAtt} title="มา (นับเป็น Guest)" /></td>
       <td className="ctr"><input type="checkbox" checked={!!f.registered} onChange={toggleReg} title="ลงทะเบียน" /></td>
       <td><input value={f.note||""} placeholder="หมายเหตุ" onChange={e=>set("note",e.target.value)} onBlur={()=>blur("note")} /></td>
       <td className="ctr"><button className="delg" title="ลบแถว" onClick={del}><SVG d={I.trash} size={15}/></button></td>
@@ -788,12 +791,13 @@ function GuestModal({home, guests, db, onChange, toast, onClose}){
   const list=guests.filter(g=>g.home_id===home.id);
   const [il,setIl]=useState(home.intro_leader||""); const [zm,setZm]=useState(home.zoom_manager||"");
   const [busy,setBusy]=useState(false);
-  const G=list.length, R=list.filter(g=>g.registered).length;
   const isCall=(home.kind||"Home")==="Call Out";
+  const total=list.length, came=list.filter(g=>g.attended).length;
+  const G=isCall?total:came, R=list.filter(g=>g.registered).length;
   const {day,mo,dow}=fmtDate(home.event_date);
-  const recount=async(arr)=>{ try{ await db.updateHome(home.id,{result_g:arr.length,result_r:arr.filter(x=>x.registered).length}); }catch(e){} };
-  const add=async()=>{ try{ await db.createGuest({home_id:home.id,guest_name:"",nickname:"",contact:"",contact_time:"",inviter:"",interested:"",whats_so:"",registered:false,note:""});
-    await recount([...list,{registered:false}]); onChange(); }catch(e){ toast("เพิ่มไม่สำเร็จ: "+(e.message||e)); } };
+  const recount=async(arr)=>{ try{ await db.updateHome(home.id,{result_g:(isCall?arr.length:arr.filter(x=>x.attended).length),result_r:arr.filter(x=>x.registered).length}); }catch(e){} };
+  const add=async()=>{ try{ await db.createGuest({home_id:home.id,guest_name:"",nickname:"",contact:"",contact_time:"",inviter:"",interested:"",whats_so:"",attended:false,registered:false,note:""});
+    await recount([...list,{attended:false,registered:false}]); onChange(); }catch(e){ toast("เพิ่มไม่สำเร็จ: "+(e.message||e)); } };
   const saveHdr=async(patch)=>{ try{ await db.updateHome(home.id,patch); onChange(); }catch(e){} };
   const finish=async()=>{ setBusy(true); try{ await db.updateHome(home.id,{completed:true,result_g:G,result_r:R});
       toast("บันทึก & จบงานแล้ว → Achieve ("+(isCall?G+" ติดต่อ · "+R+"R":G+"G "+R+"R")+")"); onChange(); onClose(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); setBusy(false); } };
@@ -808,7 +812,7 @@ function GuestModal({home, guests, db, onChange, toast, onClose}){
           <div className="ghead">
             <div className="ginfo"><SVG d={I.cal} size={15}/><b>วันที่จัด:</b>&nbsp;{day} {mo} · {home.time_slot||""}</div>
             <div className="gsum">
-              <div className="b g"><div className="n">{G}</div><div className="l">{isCall?"ติดต่อ (ไม่นับ G)":"จำนวนแขก (G)"}</div></div>
+              <div className="b g"><div className="n">{G}</div><div className="l">{isCall?"ติดต่อ (ไม่นับ G)":"มา = Guest ("+came+"/"+total+")"}</div></div>
               <div className="b r"><div className="n">{R}</div><div className="l">ลงทะเบียน (R)</div></div>
             </div>
             <div className="field"><label>Introduction Leader</label>
@@ -820,18 +824,18 @@ function GuestModal({home, guests, db, onChange, toast, onClose}){
             <table className="gtbl">
               <thead><tr>
                 <th className="num">No.</th><th>ชื่อแขก</th><th>ชื่อเล่น</th><th>เบอร์ติดต่อ</th><th>เวลาสะดวกติดต่อ</th>
-                <th>ผู้เชิญ</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th className="ctr">ลงทะเบียน</th><th>หมายเหตุ</th><th></th>
+                <th>ผู้เชิญ</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th className="ctr">มา</th><th className="ctr">ลงทะเบียน</th><th>หมายเหตุ</th><th></th>
               </tr></thead>
               <tbody>
                 {list.length===0
-                  ? <tr><td colSpan={11} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
+                  ? <tr><td colSpan={12} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
                   : list.map((g,i)=><GuestRow key={g.id} g={g} idx={i} db={db} onChange={onChange} toast={toast} recount={recount} list={list} />)}
               </tbody>
             </table>
           </div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,flexWrap:"wrap",gap:10}}>
             <button className="btn btn-sm" onClick={add}><SVG d={I.plus} size={15}/>{isCall?"เพิ่มรายชื่อ":"เพิ่มแขก"}</button>
-            <div className="lead-sub">รวม <b>{G}</b> {isCall?"ติดต่อ":"แขก"} · ลงทะเบียน <b>{R}</b> · สนใจ {list.filter(g=>g.interested==="สนใจ").length} · ไม่สนใจ {list.filter(g=>g.interested==="ไม่สนใจ").length}</div>
+            <div className="lead-sub">{isCall?<>รวม <b>{total}</b> ติดต่อ</>:<>รายชื่อ <b>{total}</b> · มา <b>{came}</b> (=Guest)</>} · ลงทะเบียน <b>{R}</b> · สนใจ {list.filter(g=>g.interested==="สนใจ").length} · ไม่สนใจ {list.filter(g=>g.interested==="ไม่สนใจ").length}</div>
           </div>
           <div style={{marginTop:18,borderTop:"1px dashed var(--line)",paddingTop:16}}>
             <h3 style={{margin:"0 0 3px",fontSize:16,display:"flex",alignItems:"center",gap:8}}><SVG d={I.star} size={17}/>สรุปกิจกรรม (สำหรับ Host)</h3>
@@ -953,7 +957,7 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
                       </div>}
                   {db && <div className="card-foot" style={{paddingTop:0,display:"flex",gap:8}}>
                     <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGuestFor(h)}>
-                      <SVG d={I.users} size={15}/>{(h.kind||"Home")==="Call Out"?"ติดต่อ":"แขก"}{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);const cl=(h.kind||"Home")==="Call Out";return gl.length?(cl?` · ${gl.length} · ${gl.filter(x=>x.registered).length}R`:` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`):"";})()}</button>
+                      <SVG d={I.users} size={15}/>{(h.kind||"Home")==="Call Out"?"ติดต่อ":"แขก"}{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);const cl=(h.kind||"Home")==="Call Out";return gl.length?(cl?` · ${gl.length} · ${gl.filter(x=>x.registered).length}R`:` · ${gl.filter(x=>x.attended).length}G ${gl.filter(x=>x.registered).length}R`):"";})()}</button>
                     <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไข</button>
                     <button className="btn btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(h,toast)}><SVG d={I.share} size={15}/></button>
                   </div>}
@@ -968,58 +972,68 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
 
 /* ตารางสรุปแขกในมุมมอง Host — รวมแขกจากทุกการ์ด พร้อมแหล่งที่มา (HI/CI/ES) */
 function HostGuestTable({mine, guests, db, onChange, toast}){
-  const [fInt,setFInt]=useState(""); const [fReg,setFReg]=useState(""); const [fSrc,setFSrc]=useState(""); const [q,setQ]=useState("");
+  const [fInt,setFInt]=useState(""); const [fReg,setFReg]=useState(""); const [fSrc,setFSrc]=useState(""); const [fAtt,setFAtt]=useState(""); const [q,setQ]=useState("");
   const ids=new Set(mine.map(h=>h.id)); const homeById={}; mine.forEach(h=>homeById[h.id]=h);
   const all=(guests||[]).filter(g=>ids.has(g.home_id)).map(g=>({g,home:homeById[g.home_id]}))
     .sort((a,b)=>((b.home.event_date||"").localeCompare(a.home.event_date||""))||((a.g.created_at||"").localeCompare(b.g.created_at||"")));
   const qq=q.trim().toLowerCase();
   const rows=all.filter(r=>{
     if(fInt){ if(fInt==="ยังไม่ระบุ"){ if(r.g.interested) return false; } else if((r.g.interested||"")!==fInt) return false; }
+    if(fAtt){ if(fAtt==="yes"&&!r.g.attended) return false; if(fAtt==="no"&&r.g.attended) return false; }
     if(fReg){ if(fReg==="yes"&&!r.g.registered) return false; if(fReg==="no"&&r.g.registered) return false; }
     if(fSrc && (r.home.kind||"Home")!==fSrc) return false;
     if(qq){ const hay=((r.g.guest_name||"")+" "+(r.g.nickname||"")+" "+(r.g.whats_so||"")).toLowerCase(); if(!hay.includes(qq)) return false; }
     return true;
   });
-  const active=fInt||fReg||fSrc||q;
-  const reg=rows.filter(r=>r.g.registered).length;
+  const active=fInt||fReg||fSrc||fAtt||q;
+  const reg=rows.filter(r=>r.g.registered).length, came=rows.filter(r=>r.g.attended).length;
   const toggleReg=async(g)=>{ const v=!g.registered;
     try{ await db.updateGuest(g.id,{registered:v});
       const newR=(guests||[]).filter(x=>x.home_id===g.home_id).reduce((n,x)=>n+((x.id===g.id?v:x.registered)?1:0),0);
       await db.updateHome(g.home_id,{result_r:newR}); onChange();
     }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); } };
+  const toggleAtt=async(g)=>{ const home=homeById[g.home_id]; const isCall=(home&&home.kind||"Home")==="Call Out"; const v=!g.attended;
+    try{ await db.updateGuest(g.id,{attended:v});
+      if(!isCall){ const newG=(guests||[]).filter(x=>x.home_id===g.home_id).reduce((n,x)=>n+((x.id===g.id?v:x.attended)?1:0),0); await db.updateHome(g.home_id,{result_g:newG}); }
+      onChange();
+    }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); } };
   return (
     <div className="panel">
       <h3 style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
         <span style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.users} size={18}/>ตารางสรุปแขก</span>
-        <span className="lead-sub">แสดง {rows.length} / {all.length} คน · ลงทะเบียน {reg}</span></h3>
-      <p className="lead">รวมแขกจากทุกการ์ดของคุณ · ติ๊กลงทะเบียนได้ · กรองตามหัวข้อได้</p>
+        <span className="lead-sub">แสดง {rows.length} / {all.length} คน · มา {came} · ลงทะเบียน {reg}</span></h3>
+      <p className="lead">รวมแขกจากทุกการ์ดของคุณ · ติ๊ก “มา” = นับเป็น Guest · กรองตามหัวข้อได้</p>
       {all.length>0 && <div className="filterbar" style={{marginBottom:14}}>
         <div className="field"><label><SVG d={I.search} size={13}/>ค้นหาชื่อ/What's so</label>
           <input className="inp" value={q} placeholder="พิมพ์คำค้น" onChange={e=>setQ(e.target.value)} /></div>
         <div className="field"><label>ความสนใจ</label>
           <select className="sel" value={fInt} onChange={e=>setFInt(e.target.value)}>
             <option value="">— ทั้งหมด —</option><option value="สนใจ">สนใจ</option><option value="ไม่สนใจ">ไม่สนใจ</option><option value="ยังไม่ระบุ">ยังไม่ระบุ</option></select></div>
+        <div className="field"><label>มา (Guest)</label>
+          <select className="sel" value={fAtt} onChange={e=>setFAtt(e.target.value)}>
+            <option value="">— ทั้งหมด —</option><option value="yes">มา</option><option value="no">ไม่มา</option></select></div>
         <div className="field"><label>ลงทะเบียน</label>
           <select className="sel" value={fReg} onChange={e=>setFReg(e.target.value)}>
             <option value="">— ทั้งหมด —</option><option value="yes">ลงทะเบียนแล้ว</option><option value="no">ยังไม่ลง</option></select></div>
         <div className="field"><label>แหล่งที่มา</label>
           <select className="sel" value={fSrc} onChange={e=>setFSrc(e.target.value)}>
             <option value="">— ทั้งหมด —</option>{KINDS.map(k=><option key={k} value={k}>{SRC_LABEL[k]||k}</option>)}</select></div>
-        {active && <button className="btn btn-sm" onClick={()=>{setFInt("");setFReg("");setFSrc("");setQ("");}}><SVG d={I.x} size={14}/>ล้าง</button>}
+        {active && <button className="btn btn-sm" onClick={()=>{setFInt("");setFReg("");setFSrc("");setFAtt("");setQ("");}}><SVG d={I.x} size={14}/>ล้าง</button>}
       </div>}
       {all.length===0 ? <div className="empty-assist">ยังไม่มีรายชื่อแขก — เพิ่มได้ที่ปุ่ม “รายละเอียดแขก” บนการ์ด</div> :
        rows.length===0 ? <div className="empty-assist">ไม่พบแขกตามตัวกรอง</div> :
         <div className="gwrap" style={{maxHeight:"none"}}>
           <table className="sumtbl">
-            <thead><tr><th>#</th><th>ชื่อแขก</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th>ลงทะเบียน</th><th>แหล่งที่มา</th><th>วันที่</th></tr></thead>
+            <thead><tr><th>#</th><th>ชื่อแขก</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th>มา</th><th>ลงทะเบียน</th><th>แหล่งที่มา</th><th>วันที่</th></tr></thead>
             <tbody>
-              {rows.map((r,i)=>{ const {day,mo}=fmtDate(r.home.event_date); const k=r.home.kind||"Home";
+              {rows.map((r,i)=>{ const {day,mo}=fmtDate(r.home.event_date); const k=r.home.kind||"Home"; const isCall=k==="Call Out";
                 return (
-                  <tr key={r.g.id} className={r.g.registered?"reg":""}>
+                  <tr key={r.g.id} className={r.g.attended?"reg":""}>
                     <td style={{color:"var(--muted)"}}>{i+1}</td>
                     <td style={{fontWeight:600}}>{r.g.guest_name||r.g.nickname||"—"}</td>
                     <td>{r.g.interested?<span className={"ipill "+(r.g.interested==="สนใจ"?"yes":"no")}>{r.g.interested}</span>:<span style={{color:"var(--muted)"}}>—</span>}</td>
                     <td style={{maxWidth:240}}>{r.g.whats_so||<span style={{color:"var(--muted)"}}>—</span>}</td>
+                    <td>{isCall?<span style={{color:"var(--muted)"}}>—</span>:<label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}><input type="checkbox" checked={!!r.g.attended} onChange={()=>toggleAtt(r.g)} />{r.g.attended?"✓":""}</label>}</td>
                     <td><label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}><input type="checkbox" checked={!!r.g.registered} onChange={()=>toggleReg(r.g)} />{r.g.registered?"✓":""}</label></td>
                     <td><span className="src" style={{color:(KIND_META[k]||KIND_META.Home).fg}}>{SRC_LABEL[k]||k}</span></td>
                     <td style={{whiteSpace:"nowrap"}}>{day} {mo}</td>
@@ -1143,7 +1157,7 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
                 {list.length===0?<span className="empty-assist" style={{padding:"4px 2px"}}>ยังไม่มีใครลงชื่อ</span>
                   :list.map(s=>(<span className="tagperson" key={s.id}><span className="ava" style={{width:22,height:22}}>{initials(s.assist_name)}</span>{s.assist_name}</span>))}
                 <div style={{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}}>
-                  <button className="btn btn-sm btn-amber" onClick={()=>setGuestFor(h)}><SVG d={I.users} size={14}/>{(h.kind||"Home")==="Call Out"?"ติดต่อ":"รายละเอียดแขก"}{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);const cl=(h.kind||"Home")==="Call Out";return gl.length?(cl?` · ${gl.length} · ${gl.filter(x=>x.registered).length}R`:` · ${gl.length}G ${gl.filter(x=>x.registered).length}R`):"";})()}</button>
+                  <button className="btn btn-sm btn-amber" onClick={()=>setGuestFor(h)}><SVG d={I.users} size={14}/>{(h.kind||"Home")==="Call Out"?"ติดต่อ":"รายละเอียดแขก"}{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);const cl=(h.kind||"Home")==="Call Out";return gl.length?(cl?` · ${gl.length} · ${gl.filter(x=>x.registered).length}R`:` · ${gl.filter(x=>x.attended).length}G ${gl.filter(x=>x.registered).length}R`):"";})()}</button>
                   <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไขงาน</button>
                   {h.completed ? <button className="btn btn-sm" onClick={()=>reopen(h)}>เปิดงานกลับ</button>
                     : <button className="btn btn-sm btn-primary" onClick={()=>setCompleteFor(h)}><SVG d={I.flag} size={14}/>จบงาน + ใส่ผล</button>}
