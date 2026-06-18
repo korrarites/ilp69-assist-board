@@ -1254,8 +1254,10 @@ function DashboardView({homes, signups}){
   const [q,setQ]=useState("");
   /* ---- รวมสถิติฝั่งผู้จัด Home ---- */
   const hostMap={};
-  homes.forEach(h=>{ const k=nrm(h.host_name); const o=hostMap[k]||(hostMap[k]={name:k,homes:0,done:0,g:0,r:0,list:[]});
-    o.homes++; o.list.push(h); if(h.completed){ o.done++; o.g+=((h.kind||"Home")==="Call Out"?0:(h.result_g||0)); o.r+=(h.result_r||0); } });
+  homes.forEach(h=>{ const k=nrm(h.host_name); const o=hostMap[k]||(hostMap[k]={name:k,homes:0,homeOnly:0,homeSuc:0,done:0,g:0,r:0,list:[]});
+    o.homes++; o.list.push(h);
+    if((h.kind||"Home")==="Home"){ o.homeOnly++; if(isSuccessHome(h)) o.homeSuc++; }
+    if(h.completed){ o.done++; o.g+=((h.kind||"Home")==="Call Out"?0:(h.result_g||0)); o.r+=(h.result_r||0); } });
   const hostRows=Object.values(hostMap);
   /* ---- รวมสถิติฝั่งผู้ช่วย Assist ---- */
   const assistMap={};
@@ -1273,8 +1275,8 @@ function DashboardView({homes, signups}){
   const critList=Object.keys(hostMap).map(n=>critStats(homes,n)).sort((a,b)=>b.passed-a.passed||b.orgSuccess-a.orgSuccess||b.guest-a.guest);
   const qualified=critList.filter(s=>s.passed===3).length;
   /* ---- leaderboards ---- */
-  const hostLeaders=hostRows.slice().sort((a,b)=>b.homes-a.homes||b.g-a.g)
-    .map(h=>({name:h.name,val:h.homes,sub:"จบแล้ว "+h.done+" · "+h.g+"G "+h.r+"R"}));
+  const hostLeaders=hostRows.filter(h=>h.homeOnly>0).sort((a,b)=>b.homeOnly-a.homeOnly||b.homeSuc-a.homeSuc)
+    .map(h=>({name:h.name,val:h.homeOnly,sub:"สำเร็จ "+h.homeSuc+" · ไม่สำเร็จ "+(h.homeOnly-h.homeSuc)}));
   const assistLeaders=assistRows.slice().sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name))
     .map(a=>({name:a.name,val:a.count,sub:null}));
   const guestLeaders=hostRows.filter(h=>h.g>0).sort((a,b)=>b.g-a.g||b.r-a.r)
