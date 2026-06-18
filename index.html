@@ -1280,7 +1280,9 @@ function DashboardView({homes, signups}){
   const assistLeaders=assistRows.slice().sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name))
     .map(a=>({name:a.name,val:a.count,sub:null}));
   const guestLeaders=hostRows.filter(h=>h.g>0).sort((a,b)=>b.g-a.g||b.r-a.r)
-    .map(h=>({name:h.name,val:h.g,sub:h.r+"R · "+h.done+" home"}));
+    .map(h=>({name:h.name,val:h.g,sub:h.r+" ลงทะเบียน · "+h.done+" งาน"}));
+  const regLeaders=hostRows.filter(h=>h.r>0).sort((a,b)=>b.r-a.r||b.g-a.g)
+    .map(h=>({name:h.name,val:h.r,sub:h.g+" Guest · "+h.done+" งาน"}));
   /* ---- person lookup ---- */
   const homeById={}; homes.forEach(h=>homeById[h.id]=h);
   const allNames=Array.from(new Set([...Object.keys(hostMap),...Object.keys(assistMap)])).sort();
@@ -1316,8 +1318,9 @@ function DashboardView({homes, signups}){
         <StatLeaders title="จัด Home มากสุด" icon={I.trophy} rows={hostLeaders} unit="งาน" />
         <StatLeaders title="Assist มากสุด" icon={I.star} rows={assistLeaders} unit="ครั้ง" accent="amber" />
       </div>
-      <div style={{marginTop:18}}>
-        <StatLeaders title="ทำ Guest ได้มากสุด (ต่อผู้จัด)" icon={I.users} rows={guestLeaders} unit="คน" />
+      <div className="dash-cols" style={{marginTop:18}}>
+        <StatLeaders title="จำนวน Guest มากที่สุด" icon={I.users} rows={guestLeaders} unit="คน" />
+        <StatLeaders title="จำนวนลงทะเบียน มากที่สุด" icon={I.flag} rows={regLeaders} unit="คน" accent="amber" />
       </div>
     </div>
   );
