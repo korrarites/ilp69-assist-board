@@ -1257,7 +1257,8 @@ function DashboardView({homes, signups}){
   homes.forEach(h=>{ const k=nrm(h.host_name); const o=hostMap[k]||(hostMap[k]={name:k,homes:0,homeOnly:0,homeSuc:0,done:0,g:0,r:0,list:[]});
     o.homes++; o.list.push(h);
     if((h.kind||"Home")==="Home"){ o.homeOnly++; if(isSuccessHome(h)) o.homeSuc++; }
-    if(h.completed){ o.done++; o.g+=((h.kind||"Home")==="Call Out"?0:(h.result_g||0)); o.r+=(h.result_r||0); } });
+    o.g+=((h.kind||"Home")==="Call Out"?0:(h.result_g||0)); o.r+=(h.result_r||0);
+    if(h.completed) o.done++; });
   const hostRows=Object.values(hostMap);
   /* ---- รวมสถิติฝั่งผู้ช่วย Assist ---- */
   const assistMap={};
@@ -1280,9 +1281,9 @@ function DashboardView({homes, signups}){
   const assistLeaders=assistRows.slice().sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name))
     .map(a=>({name:a.name,val:a.count,sub:null}));
   const guestLeaders=hostRows.filter(h=>h.g>0).sort((a,b)=>b.g-a.g||b.r-a.r)
-    .map(h=>({name:h.name,val:h.g,sub:h.r+" ลงทะเบียน · "+h.done+" งาน"}));
+    .map(h=>({name:h.name,val:h.g,sub:"รวมทุกงาน · "+h.r+" ลงทะเบียน"}));
   const regLeaders=hostRows.filter(h=>h.r>0).sort((a,b)=>b.r-a.r||b.g-a.g)
-    .map(h=>({name:h.name,val:h.r,sub:h.g+" Guest · "+h.done+" งาน"}));
+    .map(h=>({name:h.name,val:h.r,sub:"รวมทุกงาน · "+h.g+" Guest"}));
   /* ---- person lookup ---- */
   const homeById={}; homes.forEach(h=>homeById[h.id]=h);
   const allNames=Array.from(new Set([...Object.keys(hostMap),...Object.keys(assistMap)])).sort();
