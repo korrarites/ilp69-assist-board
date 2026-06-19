@@ -315,15 +315,30 @@
   .rpt .legend{font-size:11px;color:#444;margin-top:8px;line-height:1.6}
   .rpt-wrap{background:#e9e7df;padding:18px;overflow:auto;border-radius:10px}
   @media print{
+    @page{size:A4 landscape;margin:8mm}
     body{background:#fff!important}
     body *{visibility:hidden!important}
-    #callrpt, #callrpt *{visibility:visible!important}
+    #callrpt, #callrpt *, #wkrpt, #wkrpt *{visibility:visible!important}
     #callrpt{position:absolute;left:0;top:0;width:760px;padding:0}
+    #wkrpt{position:absolute;left:0;top:0;width:100%;padding:0}
     .scrim{position:static!important;background:none!important;padding:0!important;display:block!important;overflow:visible!important}
     .modal{box-shadow:none!important;border:none!important;max-width:none!important}
     .modal-h,.modal-f,.rpt-actions{display:none!important}
     .rpt-wrap{background:none!important;padding:0!important}
   }
+  /* weekly review report + summary */
+  .wk-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1.5px solid #111}
+  .wk-col{border-right:1.5px solid #111}.wk-col:last-child{border-right:none}
+  .wk-colh{background:#f0f0f0;font-weight:700;text-align:center;padding:5px;border-bottom:1.5px solid #111;font-size:12.5px}
+  .wk-q{border-bottom:1px solid #111;padding:6px 8px;min-height:46px}
+  .wk-q .ql{font-size:11px;color:#222;font-weight:600;margin-bottom:3px}
+  .wk-q .qa{color:#16389e;font-weight:600;font-size:12px;white-space:pre-wrap}
+  .wktbl{border-collapse:collapse;font-size:12px;width:100%;min-width:560px}
+  .wktbl th,.wktbl td{border:1px solid var(--line-strong);padding:6px 8px;vertical-align:top;text-align:left}
+  .wktbl th{background:var(--paper-2);font-family:"Bai Jamjuree";font-weight:700;white-space:nowrap;position:sticky;top:0}
+  .wktbl td.q{background:var(--paper);font-weight:600;min-width:200px;max-width:240px}
+  .wktbl td .a{color:#16389e}
+  .wktbl tr.sec td{background:#0E211C;color:#D9EDE6;font-family:"Bai Jamjuree";font-weight:700}
   .skeleton{background:linear-gradient(90deg,#eee,#f6f5f0,#eee);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:8px}
   @keyframes sk{to{background-position:-200% 0}}
   .footer{max-width:1180px;margin:0 auto;padding:24px 20px 40px;color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line)}
@@ -339,6 +354,7 @@
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7.26.9/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useCallback } = React;
@@ -417,18 +433,23 @@ function makeSupabaseDB(cfg){
     async deleteGuest(id){ const {error}=await sb.from("ilp69_guests").delete().eq("id",id); if(error) throw error; },
     async writeLog(action,detail){ try{ await sb.from("ilp69_log").insert({action,detail}); }catch(e){} },
     async listLog(limit){ const {data,error}=await sb.from("ilp69_log").select("*").order("created_at",{ascending:false}).limit(limit||300); if(error) throw error; return data||[]; },
+    async listWeekly(){ const {data,error}=await sb.from("ilp69_weekly").select("*").order("week_end",{ascending:false}); if(error) throw error; return data||[]; },
+    async createWeekly(w){ const {data,error}=await sb.from("ilp69_weekly").insert(w).select("id").single(); if(error) throw error; return data.id; },
+    async updateWeekly(id,p){ const {error}=await sb.from("ilp69_weekly").update(p).eq("id",id); if(error) throw error; },
+    async deleteWeekly(id){ const {error}=await sb.from("ilp69_weekly").delete().eq("id",id); if(error) throw error; },
     async countHomes(){ const {count,error}=await sb.from("ilp69_homes").select("id",{count:"exact",head:true}); if(error) throw error; return count||0; },
     subscribe(cb){ const ch=sb.channel("ilp69-rt")
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_homes"},cb)
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_signups"},cb)
-      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_guests"},cb).subscribe();
+      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_guests"},cb)
+      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_weekly"},cb).subscribe();
       return ()=>{try{sb.removeChannel(ch)}catch(e){}}; }
   };
 }
 function makeDemoDB(){
   const K="ilp69_demo_v3";
-  const read=()=>{ let d; try{d=JSON.parse(localStorage.getItem(K)||'{"homes":[],"signups":[],"guests":[],"logs":[]}')}catch(e){d={homes:[],signups:[],guests:[],logs:[]}}
-    d.homes=d.homes||[]; d.signups=d.signups||[]; d.guests=d.guests||[]; d.logs=d.logs||[]; return d; };
+  const read=()=>{ let d; try{d=JSON.parse(localStorage.getItem(K)||'{"homes":[],"signups":[],"guests":[],"logs":[],"weekly":[]}')}catch(e){d={homes:[],signups:[],guests:[],logs:[],weekly:[]}}
+    d.homes=d.homes||[]; d.signups=d.signups||[]; d.guests=d.guests||[]; d.logs=d.logs||[]; d.weekly=d.weekly||[]; return d; };
   const write=(d)=>{ localStorage.setItem(K,JSON.stringify(d)); window.dispatchEvent(new Event("ilp69-demo-change")); };
   const uid=()=>(crypto.randomUUID?crypto.randomUUID():"id"+Date.now()+Math.random().toString(16).slice(2));
   if(!localStorage.getItem(K)){
@@ -453,6 +474,10 @@ function makeDemoDB(){
     async deleteGuest(id){ const d=read(); d.guests=d.guests.filter(x=>x.id!==id); write(d); },
     async writeLog(action,detail){ const d=read(); d.logs.push({id:uid(),action,detail,created_at:new Date().toISOString()}); if(d.logs.length>1000) d.logs=d.logs.slice(-1000); write(d); },
     async listLog(limit){ return read().logs.slice().sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||"")).slice(0,limit||300); },
+    async listWeekly(){ return read().weekly.slice().sort((a,b)=>((b.week_end||"")+"").localeCompare((a.week_end||"")+"")); },
+    async createWeekly(w){ const d=read(); const id=uid(); d.weekly.push({...w,id,created_at:new Date().toISOString()}); write(d); return id; },
+    async updateWeekly(id,p){ const d=read(); d.weekly=d.weekly.map(x=>x.id===id?{...x,...p}:x); write(d); },
+    async deleteWeekly(id){ const d=read(); d.weekly=d.weekly.filter(x=>x.id!==id); write(d); },
     async countHomes(){ return read().homes.length; },
     subscribe(cb){ const f=()=>cb(); window.addEventListener("ilp69-demo-change",f); window.addEventListener("storage",f);
       return ()=>{window.removeEventListener("ilp69-demo-change",f);window.removeEventListener("storage",f);}; }
@@ -498,6 +523,15 @@ function resultText(h){ if(h.result_g==null&&h.result_r==null) return "";
   if((h.kind||"Home")==="Call Out") return (h.result_g||0)+" ติดต่อ · "+(h.result_r||0)+"R";
   return (h.result_g||0)+"G "+(h.result_r||0)+"R"; }
 function guestLabel(kind){ return (kind||"Home")==="Call Out"?"ติดต่อ":"Guest"; }
+async function downloadImage(elId, filename){
+  const el=document.getElementById(elId);
+  if(!el) return;
+  if(typeof html2canvas==="undefined"){ window.print(); return; }
+  try{
+    const canvas=await html2canvas(el,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
+    const a=document.createElement("a"); a.href=canvas.toDataURL("image/png"); a.download=(filename||"report")+".png"; a.click();
+  }catch(e){ alert("ดาวน์โหลดรูปไม่สำเร็จ: "+(e.message||e)); }
+}
 function cardLink(id){ return location.origin+location.pathname+"#home="+id; }
 async function shareHome(home, toast){ const url=cardLink(home.id); const title=(home.title||home.host_name)+" · ILP69 Home";
   if(navigator.share){ try{ await navigator.share({title,url}); return; }catch(e){ if(e&&e.name==="AbortError") return; } }
@@ -886,7 +920,7 @@ function CallReport({home, guests, onClose}){
       <div className="modal" style={{maxWidth:840,background:"#fff"}}>
         <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.phone} size={18}/></div>
           <div style={{flex:1}}><h3>รายงาน Call Out — บันทึกผลการโทรศัพท์</h3><p>{home.host_name} · {f.day} {f.mo}</p></div>
-          <button className="btn btn-primary btn-sm" onClick={()=>window.print()} style={{marginRight:8}}><SVG d={I.cal} size={14}/>พิมพ์ / บันทึกเป็นรูป</button>
+          <button className="btn btn-primary btn-sm" onClick={()=>downloadImage("callrpt","callout-"+(home.host_name||"")+"-"+(home.event_date||""))} style={{marginRight:8}}><SVG d={I.cal} size={14}/>ดาวน์โหลดรูป (PNG)</button>
           <button className="xbtn" onClick={onClose}><SVG d={I.x} size={18}/></button></div>
         <div className="modal-b rpt-wrap">
           <div id="callrpt" className="rpt">
@@ -933,7 +967,7 @@ function CallReport({home, guests, onClose}){
           </div>
         </div>
         <div className="modal-f"><button className="btn" onClick={onClose}>ปิด</button>
-          <button className="btn btn-primary" onClick={()=>window.print()}><SVG d={I.cal} size={15}/>พิมพ์ / บันทึกเป็นรูป</button></div>
+          <button className="btn btn-primary" onClick={()=>downloadImage("callrpt","callout-"+(home.host_name||"")+"-"+(home.event_date||""))}><SVG d={I.cal} size={15}/>ดาวน์โหลดรูป (PNG)</button></div>
       </div>
     </div>
   );
@@ -1288,8 +1322,152 @@ function HostActivityTable({mine, signups}){
     </div>
   );
 }
-function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
-  const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null);
+/* ===== Weekly Review / Preview Report ===== */
+const WK_PAST=[
+  {k:"forward",en:"How did you forward your game this week?",th:"คุณได้นำเกมของคุณไปข้างหน้าอย่างไรบ้างในสัปดาห์ที่ผ่านมา?"},
+  {k:"leader",en:"Have you been managing the existence of yourself as a leader?",th:"คุณได้จัดการการเป็นของคุณในฐานะผู้นำหรือไม่?"},
+  {k:"stopped",en:"Where were you stopped?",th:"ที่ไหนที่คุณถูกหยุดยั้ง?"},
+  {k:"integrity",en:"What out of integrity were you present to?",th:"คุณสัมผัสถึงอะไรบ้างที่คุณไม่มีอินเทกริตี้?"},
+  {k:"cleanup",en:"How did you clean up?",th:"คุณได้จัดการสะสางมันอย่างไร?"},
+];
+const WK_INAUTH={ lead:{k:"inauth",en:"What inauthenticity did you distinguish?",th:"คุณแยกแยะเห็นความไม่เป็นเนื้อแท้อะไรของคุณบ้าง?"},
+  subs:[
+    {k:"pretending",en:"I've been pretending that",th:"ที่ผ่านมาฉันแกล้งทำเป็นว่า"},
+    {k:"infact",en:"When in fact",th:"ที่จริงแล้ว"},
+    {k:"impact",en:"The impact of that inauthentic way of being and acting is",th:"ผลกระทบจากวิธีการเป็นและวิธีการลงมือทำที่ไม่เป็นเนื้อแท้อันนั้น คือ"},
+    {k:"missing",en:"The whole time I've been being and acting this way, what's been missing is any sense of",th:"ตลอดเวลาที่ผ่านมา ที่ฉันมีการเป็นและการลงมือทำแบบนี้ สิ่งที่ขาดหายไปคือความรู้สึกสัมผัสของ"},
+    {k:"possibility",en:"Standing there, the possibility I am inventing for myself and my life is the possibility of",th:"ยืนอยู่ตรงนั้น ความเป็นไปได้ที่ฉันสร้างขึ้นสำหรับตัวฉันและชีวิตของฉัน คือความเป็นไปได้ของการเป็น"},
+  ]};
+const WK_PAST_ROWS=[...WK_PAST, WK_INAUTH.lead, ...WK_INAUTH.subs];
+const WK_AHEAD=[
+  {k:"actions",en:"What actions do you see would forward your game?",th:"คุณเห็นว่าการกระทำอะไรจะนำเกมของคุณไปข้างหน้า?"},
+  {k:"comm",en:"When are you promising to be in communication with your ILP Coach? What's time?",th:"คุณสัญญาจะสื่อสารกับโค้ชไอแอลพีของคุณเมื่อไหร่? เวลาเท่าไหร่?"},
+  {k:"community",en:"What community do you want to impact this week?",th:"ชุมชนใดที่คุณต้องการส่งผลกระทบในสัปดาห์นี้?"},
+  {k:"organise",en:"When will you organise an introduction for this community? Proposed date",th:"คุณจะจัดการแนะนำแลนด์มาร์คฟอรั่มสำหรับชุมชนนี้เมื่อไหร่? (วันที่เสนอ)"},
+  {k:"ask",en:"Who will you ask to an introduction this week?",th:"คุณจะเชิญใครมาฟังการแนะนำแลนด์มาร์คฟอรั่มในสัปดาห์นี้?"},
+  {k:"register",en:"Who will you register into the Landmark Forum this week?",th:"คุณจะลงทะเบียนใครเข้าแลนด์มาร์คฟอรั่มในสัปดาห์นี้?"},
+  {k:"difference",en:"What difference will you have?",th:"มันสร้างความแตกต่างอย่างไรกับคุณบ้าง?"},
+  {k:"ack",en:"What do you want to be acknowledged for?",th:"คุณต้องการได้รับคำชื่นชมอะไรบ้าง?"},
+];
+const WK_HEAD=[{k:"no_id",label:"NO เลขที่"},{k:"cohort",label:"รุ่น"},{k:"il_coach",label:"IL Coach"},{k:"staff_coach",label:"Staff Coach"},{k:"nickname",label:"ชื่อเล่น"},{k:"name",label:"ชื่อจริง"}];
+function wkRange(w){ if(!w.week_start&&!w.week_end) return ""; const s=w.week_start?fmtDate(w.week_start):null, e=w.week_end?fmtDate(w.week_end):null; return (s?s.day+" "+s.mo:"?")+" – "+(e?e.day+" "+e.mo:"?"); }
+function WeeklyReport({weekly, onClose}){
+  const a=weekly.answers||{}; const ink=(v)=> v?<span style={{color:"#16389e",fontWeight:600,whiteSpace:"pre-wrap"}}>{v}</span>:<span>&nbsp;</span>;
+  const e=weekly.week_end?fmtDate(weekly.week_end):null;
+  return (
+    <div className="scrim" onMouseDown={ev=>ev.target===ev.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:1040,background:"#fff"}}>
+        <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.cal} size={18}/></div>
+          <div style={{flex:1}}><h3>รายงานทบทวนประจำสัปดาห์</h3><p>{weekly.host_name} · {wkRange(weekly)}</p></div>
+          <button className="btn btn-primary btn-sm" onClick={()=>downloadImage("wkrpt","weekly-"+(weekly.host_name||"")+"-"+(weekly.week_end||""))} style={{marginRight:8}}><SVG d={I.cal} size={14}/>ดาวน์โหลดรูป</button>
+          <button className="btn btn-sm" onClick={()=>window.print()} style={{marginRight:8}}>พิมพ์ฟอร์ม</button>
+          <button className="xbtn" onClick={onClose}><SVG d={I.x} size={18}/></button></div>
+        <div className="modal-b rpt-wrap">
+          <div id="wkrpt" className="rpt" style={{width:980}}>
+            <div className="corner">ILP Assisting</div>
+            <div className="rrow" style={{alignItems:"flex-start"}}>
+              <span>NO เลขที่ {ink(weekly.no_id)}</span><span>โปรแกรมภาวะผู้นำ รุ่น {ink(weekly.cohort)}</span>
+              <span style={{flex:1,textAlign:"center",fontWeight:700,fontSize:15}}>Landmark แลนด์มาร์ค</span>
+              <span>IL COACH โค้ชไอแอล {ink(weekly.il_coach)}</span><span>STAFF COACH โค้ชสตาฟ {ink(weekly.staff_coach)}</span></div>
+            <div style={{textAlign:"center",fontWeight:700}}>Weekly Review / Preview Report : ภาพรวมประจำสัปดาห์ / รายงานทบทวน</div>
+            <div style={{textAlign:"center",fontSize:10.5,color:"#555"}}>To be completed and submitted before each classroom/weekend either in person, email or by fax by 7 pm. / ทำให้สมบูรณ์แบบและส่ง ก่อนคลาสรูม/วีคเอ็นด์แต่ละครั้ง ด้วยตัวคุณเอง อีเมล์ หรือทางแฟกซ์ ก่อน 19.00 น.</div>
+            <div style={{textAlign:"center",fontWeight:700,textDecoration:"underline",margin:"2px 0 6px"}}>COMPLETION / CREATION การสมบูรณ์แบบ / การสร้าง</div>
+            <div className="rrow" style={{borderTop:"1px solid #111",paddingTop:5}}>
+              <span>Nickname / ชื่อเล่น {ink(weekly.nickname)}</span><span>Name / ชื่อ {ink(weekly.name)}</span>
+              <span style={{marginLeft:"auto"}}>Week ending / วันสิ้นสุดของสัปดาห์ {ink(weekly.week_label)} {weekly.week_start||weekly.week_end?ink("("+wkRange(weekly)+")"):null}</span></div>
+            <div className="wk-grid" style={{marginTop:8}}>
+              <div className="wk-col"><div className="wk-colh">สำหรับสัปดาห์ที่ผ่านมา · For this week just past</div>
+                {WK_PAST.map(q=><div className="wk-q" key={q.k}><div className="ql">{q.en} <span style={{color:"#888",fontWeight:400}}>/ {q.th}</span></div><div className="qa">{a[q.k]||" "}</div></div>)}
+                <div className="wk-q" style={{background:"#fafafa"}}>
+                  <div className="ql" style={{fontWeight:700}}>{WK_INAUTH.lead.en} <span style={{color:"#888",fontWeight:400}}>/ {WK_INAUTH.lead.th}</span></div>
+                  <div className="qa" style={{marginBottom:5}}>{a.inauth||" "}</div>
+                  {WK_INAUTH.subs.map(q=><div key={q.k} style={{marginTop:5,borderTop:"1px dotted #ccc",paddingTop:3}}><div style={{fontSize:10.5,color:"#333"}}>{q.en} <span style={{color:"#999"}}>/ {q.th}</span></div><div className="qa">{a[q.k]||" "}</div></div>)}
+                </div>
+              </div>
+              <div className="wk-col"><div className="wk-colh">สำหรับสัปดาห์หน้า · For the week ahead</div>
+                {WK_AHEAD.map(q=><div className="wk-q" key={q.k}><div className="ql">{q.en} <span style={{color:"#888",fontWeight:400}}>/ {q.th}</span></div><div className="qa">{a[q.k]||" "}</div></div>)}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="modal-f"><button className="btn" onClick={onClose}>ปิด</button>
+          <button className="btn" onClick={()=>window.print()}>พิมพ์ฟอร์ม</button>
+          <button className="btn btn-primary" onClick={()=>downloadImage("wkrpt","weekly-"+(weekly.host_name||"")+"-"+(weekly.week_end||""))}><SVG d={I.cal} size={15}/>ดาวน์โหลดรูป (PNG)</button></div>
+      </div>
+    </div>
+  );
+}
+function WeeklyModal({weekly, db, onChange, toast, onClose}){
+  const [f,setF]=useState({...weekly, answers:{...(weekly.answers||{})}});
+  useEffect(()=>{ setF({...weekly, answers:{...(weekly.answers||{})}}); },[weekly.id]);
+  const [showReport,setShowReport]=useState(false);
+  const save=async(patch)=>{ try{ await db.updateWeekly(weekly.id,patch); onChange(); }catch(e){ toast("บันทึกไม่สำเร็จ: "+(e.message||e)); } };
+  const setHead=(k,v)=>setF(s=>({...s,[k]:v}));
+  const blurHead=(k)=>{ if((f[k]||"")!==(weekly[k]||"")) save({[k]:f[k]?(f[k].trim?f[k].trim():f[k]):null||f[k]||null}); };
+  const setAns=(k,v)=>setF(s=>({...s,answers:{...s.answers,[k]:v}}));
+  const blurAns=(k)=>{ const cur=(weekly.answers||{})[k]||""; if((f.answers[k]||"")!==cur) save({answers:f.answers}); };
+  const qfield=(q)=> <div className="field" key={q.k}><label style={{fontSize:12}}>{q.th} <span style={{color:"var(--muted)",fontWeight:400}}>/ {q.en}</span></label>
+    <textarea className="ta" style={{minHeight:52}} value={f.answers[q.k]||""} onChange={e=>setAns(q.k,e.target.value)} onBlur={()=>blurAns(q.k)} /></div>;
+  return (
+    <div className="scrim" onMouseDown={ev=>ev.target===ev.currentTarget&&onClose()}>
+      <div className="modal lg">
+        <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.cal} size={18}/></div>
+          <div style={{flex:1}}><h3>รายงานทบทวนประจำสัปดาห์</h3><p>{weekly.host_name} · กรอกแล้วพิมพ์เป็นฟอร์มได้ · บันทึกอัตโนมัติ</p></div>
+          <button className="btn btn-amber btn-sm" onClick={()=>setShowReport(true)} style={{marginRight:8}}><SVG d={I.cal} size={14}/>พิมพ์รายงาน</button>
+          <button className="xbtn" onClick={onClose}><SVG d={I.x} size={18}/></button></div>
+        <div className="modal-b">
+          <div className="two">
+            {WK_HEAD.map(h=><div className="field" key={h.k}><label>{h.label}</label><input className="inp" value={f[h.k]||""} onChange={e=>setHead(h.k,e.target.value)} onBlur={()=>blurHead(h.k)} /></div>)}
+            <div className="field"><label>ชื่อสัปดาห์ (Week ending) — เช่น คลาสรูม 2</label><input className="inp" value={f.week_label||""} placeholder="เช่น คลาสรูม 2" onChange={e=>setHead("week_label",e.target.value)} onBlur={()=>{ if((f.week_label||"")!==(weekly.week_label||"")) save({week_label:f.week_label?f.week_label.trim():null}); }} /></div>
+            <div className="field"><label>วันที่เริ่มสัปดาห์</label><input className="inp" type="date" value={f.week_start||""} onChange={e=>{setHead("week_start",e.target.value); save({week_start:e.target.value||null});}} /></div>
+            <div className="field"><label>วันสิ้นสุดสัปดาห์</label><input className="inp" type="date" value={f.week_end||""} onChange={e=>{setHead("week_end",e.target.value); save({week_end:e.target.value||null});}} /></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
+            <div><div className="eyebrow" style={{marginBottom:8}}>สำหรับสัปดาห์ที่ผ่านมา (Completion)</div>
+              {WK_PAST.map(qfield)}
+              <div style={{border:"1.5px solid var(--line-strong)",borderRadius:12,padding:"12px 14px",marginTop:6,background:"var(--paper)"}}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:6}}>{WK_INAUTH.lead.th} <span style={{color:"var(--muted)",fontWeight:400}}>/ {WK_INAUTH.lead.en}</span></div>
+                <textarea className="ta" style={{minHeight:44,marginBottom:6}} placeholder="สรุปสั้นๆ (ถ้ามี)" value={f.answers.inauth||""} onChange={e=>setAns("inauth",e.target.value)} onBlur={()=>blurAns("inauth")} />
+                {WK_INAUTH.subs.map(qfield)}
+              </div>
+            </div>
+            <div><div className="eyebrow" style={{marginBottom:8}}>สำหรับสัปดาห์หน้า (Creation)</div>{WK_AHEAD.map(qfield)}</div>
+          </div>
+        </div>
+        <div className="modal-f"><button className="btn" onClick={onClose}>ปิด (บันทึกอัตโนมัติแล้ว)</button>
+          <button className="btn btn-primary" onClick={()=>setShowReport(true)}><SVG d={I.cal} size={15}/>พิมพ์รายงาน</button></div>
+      </div>
+      {showReport && <WeeklyReport weekly={f} onClose={()=>setShowReport(false)} />}
+    </div>
+  );
+}
+function WeeklySummary({list, onOpen}){
+  const cols=list.slice().sort((a,b)=>((b.week_end||"")+"").localeCompare((a.week_end||"")+""));
+  const cell=(w,k)=>{ const v=(w.answers||{})[k]||""; return v?<span className="a">{v}</span>:<span style={{color:"var(--muted)"}}>—</span>; };
+  return (
+    <div className="panel">
+      <h3 style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.cal} size={18}/>สรุปรายงานทบทวนประจำสัปดาห์</h3>
+      <p className="lead">แต่ละคอลัมน์ = 1 สัปดาห์ (วันสิ้นสุด + ช่วงวันที่) · คลิกหัวคอลัมน์เพื่อเปิด/แก้</p>
+      {cols.length===0 ? <div className="empty-assist">ยังไม่มีรายงาน — กด “สร้างรายงานทบทวนประจำสัปดาห์”</div> :
+        <div className="gwrap" style={{maxHeight:"none"}}>
+          <table className="wktbl">
+            <thead><tr><th>หัวข้อ</th>{cols.map(w=><th key={w.id} style={{cursor:"pointer"}} onClick={()=>onOpen(w.id)}>{w.week_label||(w.week_end?fmtDate(w.week_end).day+" "+fmtDate(w.week_end).mo:"(ไม่ระบุ)")}<div style={{fontWeight:400,fontSize:11,color:"var(--muted)"}}>{wkRange(w)||"—"}</div></th>)}</tr></thead>
+            <tbody>
+              <tr className="sec"><td colSpan={cols.length+1}>สำหรับสัปดาห์ที่ผ่านมา</td></tr>
+              {WK_PAST_ROWS.map(q=><tr key={q.k}><td className="q">{q.th}</td>{cols.map(w=><td key={w.id}>{cell(w,q.k)}</td>)}</tr>)}
+              <tr className="sec"><td colSpan={cols.length+1}>สำหรับสัปดาห์หน้า</td></tr>
+              {WK_AHEAD.map(q=><tr key={q.k}><td className="q">{q.th}</td>{cols.map(w=><td key={w.id}>{cell(w,q.k)}</td>)}</tr>)}
+            </tbody>
+          </table>
+        </div>}
+    </div>
+  );
+}
+function HostView({homes, signups, guests, weeklies, db, onChange, toast, onCreate}){
+  const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null); const [weeklyEditId,setWeeklyEditId]=useState(null); const [hostTab,setHostTab]=useState("guest");
+  const myWeeklies=q?(weeklies||[]).filter(w=>nrm(w.host_name)===nrm(q)):[];
+  const newWeekly=async()=>{ try{ const id=await db.createWeekly({host_name:q,cohort:"69",nickname:q,name:"",no_id:"",il_coach:"",staff_coach:"",week_start:null,week_end:null,answers:{}}); await onChange(); setWeeklyEditId(id); toast("สร้างรายงานใหม่แล้ว · กรอกได้เลย"); }catch(e){ toast("สร้างไม่สำเร็จ: "+(e.message||e)); } };
+  const delWeekly=async(id)=>{ if(!window.confirm("ลบรายงานสัปดาห์นี้?")) return; try{ await db.deleteWeekly(id); onChange(); toast("ลบแล้ว"); }catch(e){ toast("ลบไม่สำเร็จ"); } };
   const hostNames=Array.from(new Set(homes.map(h=>h.host_name))).sort();
   const mine=q?homes.filter(h=>h.host_name===q).sort((a,b)=>a.event_date.localeCompare(b.event_date)):[];
   const del=async(h)=>{ if(!window.confirm("ลบงานวันที่ "+h.event_date+" ของ "+h.host_name+"? รายชื่อที่ลงไว้จะถูกลบด้วย")) return;
@@ -1306,12 +1484,35 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
           <input className="inp" list="hostlist" value={q} placeholder="เช่น วัฒน์69" onChange={e=>setQ(e.target.value)} />
           <datalist id="hostlist">{hostNames.map(n=><option key={n} value={n}/>)}</datalist></div></div>
       </div>
+      {q && mine.length>0 && <div style={{marginTop:16}}><CriteriaPanel s={critStats(homes, q)} /></div>}
+      {q && <div style={{marginTop:16}}>
+        <div className="panel" style={{padding:"8px 10px",marginBottom:16,display:"flex",gap:6,flexWrap:"wrap"}}>
+          {[{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"}].map(tt=>
+            <button key={tt.id} className={"btn btn-sm"+(hostTab===tt.id?" btn-primary":"")} onClick={()=>setHostTab(tt.id)}>{tt.label}</button>)}
+        </div>
+        {hostTab==="guest" && <HostGuestTable mine={mine} guests={guests} db={db} onChange={onChange} toast={toast} />}
+        {hostTab==="activity" && <HostActivityTable mine={mine} signups={signups} />}
+        {hostTab==="reflect" && <HostReflectTable mine={mine} />}
+        {hostTab==="weekly" && <>
+          <div className="panel" style={{padding:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,marginBottom:16}}>
+            <div><div className="eyebrow">รายงานทบทวนประจำสัปดาห์</div><div className="lead-sub" style={{marginTop:2}}>ของ {q} · มี {myWeeklies.length} สัปดาห์</div></div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+              {myWeeklies.slice().sort((a,b)=>((b.week_end||"")+"").localeCompare((a.week_end||"")+"")).map(w=>(
+                <span className="tagperson" key={w.id} style={{paddingLeft:6}}>
+                  <button className="xbtn" style={{width:22,height:22}} title="เปิด/แก้/พิมพ์" onClick={()=>setWeeklyEditId(w.id)}><SVG d={I.cal} size={13}/></button>
+                  {w.week_end?fmtDate(w.week_end).day+" "+fmtDate(w.week_end).mo:"ใหม่"}
+                  <button className="xbtn" style={{width:22,height:22}} title="ลบ" onClick={()=>delWeekly(w.id)}><SVG d={I.trash} size={13}/></button>
+                </span>))}
+              <button className="btn btn-primary btn-sm" onClick={newWeekly}><SVG d={I.plus} size={15}/>สร้างรายงานทบทวนประจำสัปดาห์</button>
+            </div>
+          </div>
+          <WeeklySummary list={myWeeklies} onOpen={setWeeklyEditId} />
+        </>}
+      </div>}
       {!q && <div className="empty" style={{marginTop:16}}><div className="big"><SVG d={I.user} size={26}/></div>
         <h3>เลือกชื่อผู้จัด Home ด้านบน</h3><p>ระบบจะแสดงทุกงานของคนนั้น ทั้งที่กำลังจะถึงและที่ผ่านมา พร้อมรายชื่อคนที่มาช่วย</p></div>}
       {q && mine.length===0 && <div className="empty" style={{marginTop:16}}><h3>ยังไม่มีงานของ “{q}”</h3>
         <p>กดสร้างงาน Home เพื่อเปิดรับ Assist ได้เลย</p><button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงาน</button></div>}
-      {q && mine.length>0 && <div style={{marginTop:16}}><CriteriaPanel s={critStats(homes, q)} /></div>}
-      {q && mine.length>0 && <div style={{marginTop:16}}><HostGuestTable mine={mine} guests={guests} db={db} onChange={onChange} toast={toast} /></div>}
       {q && mine.length>0 && <div className="hostgrid" style={{marginTop:16}}>
         {mine.map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo}=fmtDate(h.event_date);
           return (
@@ -1339,11 +1540,10 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
             </div>
           ); })}
       </div>}
-      {q && mine.length>0 && <div style={{marginTop:16}}><HostActivityTable mine={mine} signups={signups} /></div>}
-      {q && mine.length>0 && <div style={{marginTop:16}}><HostReflectTable mine={mine} /></div>}
       {completeFor && <CompleteModal home={completeFor} db={db} onChange={onChange} toast={toast} onClose={()=>setCompleteFor(null)} />}
       {guestFor && <GuestModal home={guestFor} guests={guests||[]} homes={homes} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
       {editFor && <CreateModal home={editFor} db={db} onChange={onChange} toast={toast} onClose={()=>setEditFor(null)} />}
+      {weeklyEditId && (()=>{ const w=(weeklies||[]).find(x=>x.id===weeklyEditId); return w?<WeeklyModal weekly={w} db={db} onChange={onChange} toast={toast} onClose={()=>setWeeklyEditId(null)} />:null; })()}
     </div>
   );
 }
@@ -1765,13 +1965,13 @@ function App(){
   const dataRef=useRef({homes:[],signups:[],guests:[]});
   const [db,setDb]=useState(()=>{ const c=loadCfg(); return withLog(c?makeSupabaseDB(c):makeDemoDB(), ()=>dataRef.current); });
   const [tab,setTab]=useState("board");
-  const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]);
+  const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]); const [weeklies,setWeeklies]=useState([]);
   const [loading,setLoading]=useState(true); const [showCreate,setShowCreate]=useState(false); const [showLog,setShowLog]=useState(false);
   const [focusId,setFocusId]=useState(()=>{ const m=(window.location.hash||"").match(/home=([\w-]+)/); return m?m[1]:null; });
   const focusedRef=useRef(false);
   const [toastMsg,setToastMsg]=useState(""); const toastT=useRef();
   const toast=useCallback((m)=>{ setToastMsg(m); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToastMsg(""),2600); },[]);
-  const refresh=useCallback(async()=>{ try{ const [h,s,g]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests()]); setHomes(h); setSignups(s); setGuests(g); dataRef.current={homes:h,signups:s,guests:g}; }
+  const refresh=useCallback(async()=>{ try{ const [h,s,g,w]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests(),db.listWeekly()]); setHomes(h); setSignups(s); setGuests(g); setWeeklies(w); dataRef.current={homes:h,signups:s,guests:g}; }
     catch(e){ toast("โหลดข้อมูลไม่สำเร็จ: "+(e.message||e)); } setLoading(false); },[db,toast]);
   useEffect(()=>{ setLoading(true); refresh(); const off=db.subscribe(()=>refresh()); return off; },[db,refresh]);
   useEffect(()=>{ const f=()=>refresh(); window.addEventListener("focus",f); const iv=setInterval(refresh,20000);
@@ -1816,7 +2016,7 @@ function App(){
             {tab==="archive" && <ArchiveView homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} />}
             {tab==="dash"    && <DashboardView homes={homes} signups={signups} guests={guests} />}
             {tab==="members" && <CriteriaView homes={homes} signups={signups} />}
-            {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
+            {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} weeklies={weeklies} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
           </>}
       {showCreate && <CreateModal db={db} onChange={refresh} toast={toast} onClose={()=>setShowCreate(false)} />}
       {showLog && <LogModal db={db} onClose={()=>setShowLog(false)} />}
