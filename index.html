@@ -990,6 +990,7 @@ function CallReport({home, guests, onClose}){
   );
 }
 function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
+  const liveHome=(homes||[]).find(h=>h.id===home.id)||home;
   const list=guests.filter(g=>g.home_id===home.id);
   const [showReport,setShowReport]=useState(false);
   const evOpts=eventOptions(homes, home.host_name);
@@ -1073,7 +1074,7 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
             : <button className="btn btn-amber" onClick={async()=>{ await saveHdr({completed:false}); toast("เปิดงานกลับมาแล้ว"); }}>เปิดงานกลับ</button>}
         </div>
       </div>
-      {showReport && <CallReport home={home} guests={guests} onClose={()=>setShowReport(false)} />}
+      {showReport && <CallReport home={liveHome} guests={guests} onClose={()=>setShowReport(false)} />}
     </div>
   );
 }
