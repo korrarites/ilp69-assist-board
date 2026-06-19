@@ -913,7 +913,7 @@ function ReflectField({home, field, label, ph, db, onChange}){
 }
 /* ===== Call Out report ===== */
 const CO_HEAD=[{k:"co_session",label:"ครั้งที่"},{k:"co_nickname",label:"ชื่อเล่น"},{k:"co_realname",label:"ชื่อจริง"},{k:"co_coach",label:"โค้ชสตาฟ"},{k:"intro_leader",label:"โค้ช IL"}];
-const CO_GOALS=[{k:"co_goal_talked",label:"คนที่ได้คุย"},{k:"co_goal_interested",label:"ผู้สนใจลงทะเบียน"},{k:"co_goal_reg",label:"ลงทะเบียน"},{k:"co_goal_gst",label:"เกรส (Guest)"}];
+const CO_GOALS=[{k:"co_goal_talked",label:"คนที่ได้คุย"},{k:"co_goal_interested",label:"ผู้สนใจลงทะเบียน / ฟังการแนะนำ (P)"},{k:"co_goal_reg",label:"ลงทะเบียน"},{k:"co_goal_gst",label:"เกรส (Guest)"}];
 const CO_TEXT=[{k:"co_detail1",label:"บันทึกรายละเอียด 1"},{k:"co_detail2",label:"บันทึกรายละเอียด 2"}];
 function coActuals(list){ return { talked:list.length, interested:list.filter(g=>g.interested==="สนใจ").length, reg:list.filter(g=>g.registered).length, gst:list.filter(g=>(g.call_status==="Gst")||g.attended).length }; }
 function eventOptions(homes, hostName){ const ek=["Home","Center Intro","Evening Session"];
@@ -950,15 +950,15 @@ function CallReport({home, guests, onClose}){
             </div>
             <div className="rrow"><span>ชื่อจริง {ink(home.co_realname)}</span><span>กลุ่ม {ink(home.host_group!=null?("กลุ่ม "+home.host_group):"")}</span></div>
             <div className="rrow"><span>วันที่แอ๊สซิสท์ {ink(f.day+" "+f.mo)}</span><span>เวลาแอ๊สซิสท์ {ink(home.time_slot)}</span></div>
-            <div className="rrow"><span>คุณค่าที่สร้างว่าได้รับจากการแอ๊สซิสท์ {ink(home.reflect_value)}</span></div>
+            <div className="rrow"><span>คุณค่าที่สร้างว่าได้รับจากการแอ๊สซิสท์ {ink(home.co_value||home.reflect_value)}</span></div>
 
             <div className="sec">เขียนรายชื่อเพิ่ม ในใบ “100 ชีวิตแห่งความเป็นไปได้” — ช่วง 10 นาทีแรก</div>
             <div className="sec">บันทึกการโทรศัพท์เพื่อลงทะเบียน — ช่วง 1:30 ชั่วโมงแรก</div>
             <div className="rrow"><span>จำนวนคนที่ได้คุย {ag(ac.talked,home.co_goal_talked)}</span><span style={{marginLeft:"auto"}}>จำนวนลงทะเบียน {ag(ac.reg,home.co_goal_reg)}</span></div>
-            <div className="rrow"><span>จำนวนผู้ที่สนใจลงทะเบียน {ag(ac.interested,home.co_goal_interested)}</span><span style={{marginLeft:"auto"}}>จำนวนเกสท์ {ag(ac.gst,home.co_goal_gst)}</span></div>
+            <div className="rrow"><span>จำนวนผู้สนใจลงทะเบียน / ฟังการแนะนำ (P) {ag(ac.interested,home.co_goal_interested)}</span><span style={{marginLeft:"auto"}}>จำนวนเกสท์ {ag(ac.gst,home.co_goal_gst)}</span></div>
             <div style={{fontSize:10.5,color:"#666"}}>* รูปแบบ ทำได้จริง / เป้าหมาย(คำสัญญา)</div>
             <div style={{display:"flex",gap:10,marginTop:4}}>
-              <div style={{flex:1}}><div style={{fontWeight:700,marginBottom:2}}>บันทึกผู้สนใจลงทะเบียน:</div>
+              <div style={{flex:1}}><div style={{fontWeight:700,marginBottom:2}}>บันทึกผู้สนใจลงทะเบียน / ฟังการแนะนำ (P):</div>
                 {Array.from({length:7}).map((_,i)=>{ const g=irows[i];
                   return <div className="rline" key={i}><span>{i+1}.</span>{g?ink((g.guest_name||g.nickname||"")+" "+(g.interested||"")+" "+(g.whats_so||g.note||"")):<span>&nbsp;</span>}</div>; })}
               </div>
@@ -1024,6 +1024,7 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
             <div className="field"><label>Zoom Manager</label>
               <input className="inp" list="rosterlist" value={zm} placeholder="เช่น สปาร์ค63" onChange={e=>setZm(e.target.value)} onBlur={()=>zm!==(home.zoom_manager||"")&&saveHdr({zoom_manager:zm.trim()||null})} /></div>
           </div>
+          {isCall && <div style={{marginTop:14}}><ReflectField home={home} field="co_value" label="💎 คุณค่าที่สร้างว่าได้รับจากการแอ๊สซิสท์ (กรอกก่อนเริ่มบันทึกรายชื่อ)" ph="คุณค่า / สิ่งที่ได้รับจากการแอ๊สซิสท์" db={db} onChange={onChange} /></div>}
           <div className="gwrap" style={{marginTop:14}}>
             <table className="gtbl">
               <thead><tr>
