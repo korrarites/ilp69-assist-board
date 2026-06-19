@@ -1499,7 +1499,7 @@ function progressData(homes, guests, host, ps, pe){
     .map(g=>{const h=homeById[g.home_id];const k=h.kind||"Home";return {name:(g.guest_name||g.nickname||"-"),src:SRC[k],date:h.event_date};})
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   const callOuts=hostHomes.filter(h=>(h.kind||"Home")==="Call Out").sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||""));
-  const callRows=callOuts.map((h,i)=>({no:i+1,date:h.event_date,time:h.time_slot})).filter(r=>inP(r.date));
+  const callRows=callOuts.map((h,i)=>({no:(h.co_session!=null&&h.co_session!=="")?h.co_session:"",date:h.event_date,time:h.time_slot})).filter(r=>inP(r.date));
   const assistCount=callOuts.length;
   const totalGuests=myGuests.filter(g=>{const h=homeById[g.home_id];return g.attended&&(h.kind||"Home")!=="Call Out";}).length;
   const totalReg=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h);}).length;
