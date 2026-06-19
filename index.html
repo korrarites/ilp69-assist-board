@@ -391,7 +391,7 @@ const HOST_ROSTER = [
 ];
 
 /* ===== ตัวเลือกตามชีต ===== */
-const SLOT_EVENING="19.00 - 22.00 น.", SLOT_AFTERNOON="14.00 - 17.00 น.";
+const SLOT_EVENING="19.00 - 22.00 น.", SLOT_AFTERNOON="14.00 - 17.00 น.", SLOT_CALLOUT="18.30 - 21.30 น.";
 const TIME_SLOTS=[SLOT_EVENING,"18.00 - 22.00 น.",SLOT_AFTERNOON,"13.00 - 17.30 น.","13.00 - 16.00 น.","อื่นๆ"];
 const CHANNELS=["Online-Zoom","Onsite"];
 
@@ -743,14 +743,14 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
   const knownSlot=edit&&TIME_SLOTS.includes(home.time_slot);
   const [f,setF]=useState(edit
     ? {host_name:home.host_name||"",host_group:home.host_group==null?"":String(home.host_group),title:home.title||"",kind:home.kind||"Home",
-       event_date:home.event_date||"",time_slot:knownSlot?home.time_slot:"อื่นๆ",slotOther:knownSlot?"":(home.time_slot||""),
+       event_date:home.event_date||"",time_slot:(home.kind==="Call Out")?SLOT_CALLOUT:(knownSlot?home.time_slot:"อื่นๆ"),slotOther:knownSlot?"":(home.time_slot||""),
        channel:home.channel||"Online-Zoom",address:home.address||"",assists_needed:(home.assists_needed==null?9:home.assists_needed),
        host_contact:home.host_contact||"",note:home.note||"",intro_leader:home.intro_leader||"",zoom_manager:home.zoom_manager||""}
     : {host_name:defaultHost||"",host_group:"",title:"",kind:"Home",event_date:"",time_slot:SLOT_EVENING,slotOther:"",
        channel:"Online-Zoom",address:"",assists_needed:9,host_contact:"",note:"",intro_leader:"",zoom_manager:""});
   const [busy,setBusy]=useState(false); const set=(k,v)=>setF(s=>({...s,[k]:v}));
   /* เปลี่ยนประเภท: ตอนสร้างใหม่ Home ตั้ง 9, Event/Call Out ตั้ง 0 (ปรับเองได้) */
-  const setKind=(k)=>setF(s=>({...s,kind:k,...(edit?{}:{assists_needed:k==="Home"?9:0})}));
+  const setKind=(k)=>setF(s=>({...s,kind:k,time_slot:k==="Call Out"?SLOT_CALLOUT:(s.kind==="Call Out"?SLOT_EVENING:s.time_slot),...(edit?{}:{assists_needed:k==="Home"?9:0})}));
   const onsite=/onsite/i.test(f.channel); const ok=f.host_name.trim()&&f.event_date;
   const save=async()=>{ if(!ok) return; setBusy(true);
     try{ const slot=f.time_slot==="อื่นๆ"?(f.slotOther.trim()||"อื่นๆ"):f.time_slot;
@@ -791,9 +791,9 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
             <div className="field"><label>วันที่ * <span style={{color:"var(--muted)",fontWeight:400}}>(ย้อนหลังได้ เพื่อเก็บ record)</span></label>
               <input className="inp" type="date" value={f.event_date} onChange={e=>set("event_date",e.target.value)} /></div>
             <div className="field"><label>เวลา</label>
-              <select className="sel" value={f.time_slot} onChange={e=>set("time_slot",e.target.value)}>{TIME_SLOTS.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+              <select className="sel" value={f.time_slot} onChange={e=>set("time_slot",e.target.value)}>{(f.kind==="Call Out"?[SLOT_CALLOUT]:TIME_SLOTS).map(t=><option key={t} value={t}>{t}</option>)}</select></div>
           </div>
-          {f.time_slot==="อื่นๆ" && <div className="field"><label>ระบุเวลา</label>
+          {f.kind!=="Call Out" && f.time_slot==="อื่นๆ" && <div className="field"><label>ระบุเวลา</label>
             <input className="inp" value={f.slotOther} placeholder="เช่น 10.00 - 12.00 น." onChange={e=>set("slotOther",e.target.value)} /></div>}
           <div className="two">
             <div className="field"><label>Channel</label>
