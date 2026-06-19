@@ -290,6 +290,40 @@
   @keyframes flashring{0%,100%{box-shadow:var(--shadow)}18%,62%{box-shadow:0 0 0 3px var(--green), var(--shadow-lg)}}
   .card.flash{animation:flashring 1.5s ease-out}
   .share-ic{flex:0 0 auto;width:38px;padding:0;justify-content:center}
+  /* ===== Call Out report (ฟอร์มบันทึกผลการโทรศัพท์) ===== */
+  .rpt{background:#fff;color:#111;font-family:"IBM Plex Sans Thai",sans-serif;width:760px;max-width:100%;margin:0 auto;padding:20px 24px;font-size:12.5px;line-height:1.5}
+  .rpt .ink{color:#16389e;font-weight:600}
+  .rpt .xmk{color:#d11a1a;font-weight:800;font-size:14px;line-height:1;background:none;width:auto;height:auto;display:inline;border-radius:0;box-shadow:none;padding:0}
+  .rpt-title{text-align:center;font-weight:700;font-size:15px;border:1.5px solid #111;padding:6px;margin-bottom:10px}
+  .rpt-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:8px 0}
+  .rpt-session{font-family:"Bai Jamjuree";font-weight:700;font-size:19px;background:#ffe08a;border:1.6px solid #c0392b;border-radius:6px;padding:2px 12px}
+  .rpt-name{font-family:"Bai Jamjuree";font-weight:700;font-size:21px}
+  .rpt-name .ink{background:#fff3a0;padding:0 7px;border-radius:4px}
+  .rpt .corner{text-align:right;font-size:10px;color:#666}
+  .rrow{display:flex;flex-wrap:wrap;gap:3px 16px;margin:4px 0;align-items:flex-end}
+  .rrow>span{display:inline-flex;align-items:flex-end;gap:5px}
+  .rpt .uline{border-bottom:1px solid #111;min-width:60px;padding:0 4px;display:inline-block}
+  .rpt .sec{font-weight:700;border-top:2px solid #111;border-bottom:1px solid #111;margin:10px 0 6px;padding:3px 0;font-size:12.5px}
+  .rpt .rline{display:flex;gap:5px;border-bottom:1px dotted #999;padding:0 0;height:25px;align-items:center}
+  .rpt table{border-collapse:collapse;font-size:11.5px}
+  .rpt .grid{width:130px}
+  .rpt .grid th{border:1px solid #111;width:30px;height:21px;text-align:center;padding:0}
+  .rpt .grid td{border:1px solid #111;width:30px;height:25px;text-align:center;padding:0;vertical-align:middle}
+  .rpt .gtab{width:100%}
+  .rpt .gtab th,.rpt .gtab td{border:1px solid #111;padding:3px 5px;text-align:left;height:21px}
+  .rpt .gtab th{background:#f2f2f2;font-weight:700;text-align:center}
+  .rpt .legend{font-size:11px;color:#444;margin-top:8px;line-height:1.6}
+  .rpt-wrap{background:#e9e7df;padding:18px;overflow:auto;border-radius:10px}
+  @media print{
+    body{background:#fff!important}
+    body *{visibility:hidden!important}
+    #callrpt, #callrpt *{visibility:visible!important}
+    #callrpt{position:absolute;left:0;top:0;width:760px;padding:0}
+    .scrim{position:static!important;background:none!important;padding:0!important;display:block!important;overflow:visible!important}
+    .modal{box-shadow:none!important;border:none!important;max-width:none!important}
+    .modal-h,.modal-f,.rpt-actions{display:none!important}
+    .rpt-wrap{background:none!important;padding:0!important}
+  }
   .skeleton{background:linear-gradient(90deg,#eee,#f6f5f0,#eee);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:8px}
   @keyframes sk{to{background-position:-200% 0}}
   .footer{max-width:1180px;margin:0 auto;padding:24px 20px 40px;color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line)}
@@ -590,8 +624,8 @@ function SignForm({onSubmit,onCancel,full}){
 }
 
 /* ===== event card ===== */
-function EventCard({home, signups, guests, db, onChange, toast}){
-  const [open,setOpen]=useState(false); const [gOpen,setGOpen]=useState(false);
+function EventCard({home, signups, guests, homes, db, onChange, toast}){
+  const [open,setOpen]=useState(false); const [gOpen,setGOpen]=useState(false); const [rOpen,setROpen]=useState(false);
   const list=signups.filter(s=>s.home_id===home.id);
   const glist=(guests||[]).filter(g=>g.home_id===home.id);
   const need=(home.assists_needed==null?9:home.assists_needed), noAssist=need===0, past=isPast(home.event_date);
@@ -641,11 +675,13 @@ function EventCard({home, signups, guests, db, onChange, toast}){
         <div style={{display:"flex",gap:8,marginTop:8}}>
           <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGOpen(true)}>
             <SVG d={I.users} size={15}/>{(home.kind||"Home")==="Call Out"?"รายชื่อติดต่อ":"รายละเอียดแขก"}{glist.length>0?((home.kind||"Home")==="Call Out"?` · ${glist.length} ติดต่อ · ${glist.filter(g=>g.registered).length}R`:` · ${glist.filter(g=>g.attended).length}G ${glist.filter(g=>g.registered).length}R`):""}</button>
+          {(home.kind||"Home")==="Call Out" && <button className="btn btn-ghost btn-sm share-ic" title="พิมพ์รายงาน Call Out" onClick={()=>setROpen(true)}><SVG d={I.flag} size={15}/></button>}
           <a className="btn btn-ghost btn-sm share-ic" title="เพิ่มลง Google Calendar" href={gcalUrl(home)} target="_blank" rel="noopener noreferrer"><SVG d={I.cal} size={15}/></a>
           <button className="btn btn-ghost btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(home,toast)}><SVG d={I.share} size={15}/></button>
         </div>
       </div>}
-      {gOpen && <GuestModal home={home} guests={guests||[]} db={db} onChange={onChange} toast={toast} onClose={()=>setGOpen(false)} />}
+      {gOpen && <GuestModal home={home} guests={guests||[]} homes={homes} db={db} onChange={onChange} toast={toast} onClose={()=>setGOpen(false)} />}
+      {rOpen && <CallReport home={home} guests={guests||[]} onClose={()=>setROpen(false)} />}
     </div>
   );
 }
@@ -764,7 +800,7 @@ function CompleteModal({home, db, onChange, toast, onClose}){
 
 /* ===== guest detail form (ตามชีต “สรุปรายละเอียดแขก”) ===== */
 const INTEREST=["","สนใจ","ไม่สนใจ"];
-function GuestRow({g, idx, db, onChange, toast, recount, list}){
+function GuestRow({g, idx, db, onChange, toast, recount, list, isCall, evOpts}){
   const [f,setF]=useState(g);
   useEffect(()=>{ setF(g); },[g.id]);
   const set=(k,v)=>setF(s=>({...s,[k]:v}));
@@ -788,8 +824,18 @@ function GuestRow({g, idx, db, onChange, toast, recount, list}){
       <td><select className="selint" value={f.interested||""} onChange={e=>setInt(e.target.value)}>
         {INTEREST.map(o=><option key={o} value={o}>{o||"—"}</option>)}</select></td>
       <td><input value={f.whats_so||""} placeholder="What's so" onChange={e=>set("whats_so",e.target.value)} onBlur={()=>blur("whats_so")} /></td>
+      {isCall && <td><input value={f.age||""} placeholder="อายุ" style={{width:46}} onChange={e=>set("age",e.target.value)} onBlur={()=>blur("age")} /></td>}
+      {isCall && <td><input value={f.occupation||""} placeholder="อาชีพ" onChange={e=>set("occupation",e.target.value)} onBlur={()=>blur("occupation")} /></td>}
       <td className="ctr"><input type="checkbox" checked={!!f.attended} onChange={toggleAtt} title="มา (นับเป็น Guest)" /></td>
       <td className="ctr"><input type="checkbox" checked={!!f.registered} onChange={toggleReg} title="ลงทะเบียน" /></td>
+      {isCall && <td><select className="selint" value={f.call_status||""} onChange={e=>{set("call_status",e.target.value);persist({call_status:e.target.value||null});}}>
+        <option value="">—</option>
+        <option value="R">R = ลงทะเบียน</option>
+        <option value="L">L = ลีด สนใจลงทะเบียน แต่ยังไม่ชำระ</option>
+        <option value="P">P = เป็นไปได้ ให้ลงทะเบียน/เข้าฟังการแนะนำ</option>
+        <option value="Gst">Gst = แขกเข้าฟังการแนะนำ</option></select></td>}
+      {isCall && <td><select className="selint" value={f.cf||""} onChange={e=>{set("cf",e.target.value);persist({cf:e.target.value||null});}}><option value="">—</option><option>รอ CF</option><option>CF</option></select></td>}
+      {isCall && <td><select className="selint" value={f.event_ref||""} onChange={e=>{set("event_ref",e.target.value);persist({event_ref:e.target.value||null});}}><option value="">— เลือกจากการ์ด —</option>{(evOpts||[]).map((o,i)=><option key={i} value={o.val}>{o.label}</option>)}{f.event_ref&&!(evOpts||[]).some(o=>o.val===f.event_ref)&&<option value={f.event_ref}>{f.event_ref}</option>}</select></td>}
       <td><input value={f.note||""} placeholder="หมายเหตุ" onChange={e=>set("note",e.target.value)} onBlur={()=>blur("note")} /></td>
       <td className="ctr"><button className="delg" title="ลบแถว" onClick={del}><SVG d={I.trash} size={15}/></button></td>
     </tr>
@@ -814,8 +860,88 @@ function ReflectField({home, field, label, ph, db, onChange}){
       <textarea className="ta" style={{minHeight:50}} value={v} placeholder={ph} onChange={e=>setV(e.target.value)} onBlur={blur} /></div>
   );
 }
-function GuestModal({home, guests, db, onChange, toast, onClose}){
+/* ===== Call Out report ===== */
+const CO_HEAD=[{k:"co_session",label:"ครั้งที่"},{k:"co_nickname",label:"ชื่อเล่น"},{k:"co_realname",label:"ชื่อจริง"},{k:"co_coach",label:"โค้ชสตาฟ"},{k:"intro_leader",label:"โค้ช IL"}];
+const CO_GOALS=[{k:"co_goal_talked",label:"คนที่ได้คุย"},{k:"co_goal_interested",label:"ผู้สนใจลงทะเบียน"},{k:"co_goal_reg",label:"ลงทะเบียน"},{k:"co_goal_gst",label:"เกรส (Guest)"}];
+const CO_TEXT=[{k:"co_detail1",label:"บันทึกรายละเอียด 1"},{k:"co_detail2",label:"บันทึกรายละเอียด 2"}];
+function coActuals(list){ return { talked:list.length, interested:list.filter(g=>g.interested==="สนใจ").length, reg:list.filter(g=>g.registered).length, gst:list.filter(g=>(g.call_status==="Gst")||g.attended).length }; }
+function eventOptions(homes, hostName){ const ek=["Home","Center Intro","Evening Session"];
+  return (homes||[]).filter(h=>nrm(h.host_name)===nrm(hostName) && ek.includes(h.kind||"Home")).sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")).map(h=>{ const f=fmtDate(h.event_date); const d=f.day+" "+f.mo; return {val:d, label:(h.kind||"Home")+" · "+(h.title||h.host_name)+" · "+d}; }); }
+function HField({home, field, label, db, onChange, ph}){
+  const [v,setV]=useState(home[field]||""); useEffect(()=>{ setV(home[field]||""); },[home.id,home[field]]);
+  const blur=async()=>{ if((v||"")!==(home[field]||"")){ try{ await db.updateHome(home.id,{[field]:v.trim()||null}); onChange(); }catch(e){} } };
+  return <div className="field"><label>{label}</label><input className="inp" value={v} placeholder={ph||""} onChange={e=>setV(e.target.value)} onBlur={blur} /></div>;
+}
+function CallReport({home, guests, onClose}){
   const list=guests.filter(g=>g.home_id===home.id);
+  const f=fmtDate(home.event_date); const ac=coActuals(list);
+  const ag=(actual,goal)=> <span className="ink">{actual}{goal?(" / "+goal):""}</span>;
+  const statusOf=(g)=> g.call_status || (g.registered?"R":(g.attended?"Gst":(g.interested==="สนใจ"?"P":"")));
+  const irows=list.slice(0,7);
+  const grows=list.filter(g=> statusOf(g)==="Gst" || (g.cf||"") || g.attended).slice(0,10);
+  const ink=(v)=> v?<span className="ink">{v}</span>:<span>&nbsp;</span>;
+  const mk=(on)=> on?<span className="xmk">✕</span>:"";
+  return (
+    <div className="scrim" onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:840,background:"#fff"}}>
+        <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.phone} size={18}/></div>
+          <div style={{flex:1}}><h3>รายงาน Call Out — บันทึกผลการโทรศัพท์</h3><p>{home.host_name} · {f.day} {f.mo}</p></div>
+          <button className="btn btn-primary btn-sm" onClick={()=>window.print()} style={{marginRight:8}}><SVG d={I.cal} size={14}/>พิมพ์ / บันทึกเป็นรูป</button>
+          <button className="xbtn" onClick={onClose}><SVG d={I.x} size={18}/></button></div>
+        <div className="modal-b rpt-wrap">
+          <div id="callrpt" className="rpt">
+            <div className="corner">ILP Assisting</div>
+            <div className="rpt-title">บันทึกผลการโทรศัพท์ ในระหว่างการแอ๊สซิสท์</div>
+            <div className="rpt-head">
+              <span className="rpt-session">#ครั้งที่ <span className="ink">{home.co_session||"…"}</span></span>
+              <span className="rpt-name">ชื่อ <span className="ink">{home.co_nickname||home.host_name||"…"}</span></span>
+              <span style={{marginLeft:"auto",fontSize:12}}>โค้ชสตาฟ/โค้ช IL {ink((home.co_coach||"")+(home.co_coach&&home.intro_leader?" / ":"")+(home.intro_leader||""))}</span>
+            </div>
+            <div className="rrow"><span>ชื่อจริง {ink(home.co_realname)}</span><span>กลุ่ม {ink(home.host_group!=null?("กลุ่ม "+home.host_group):"")}</span></div>
+            <div className="rrow"><span>วันที่แอ๊สซิสท์ {ink(f.day+" "+f.mo)}</span><span>เวลาแอ๊สซิสท์ {ink(home.time_slot)}</span></div>
+            <div className="rrow"><span>คุณค่าที่สร้างว่าได้รับจากการแอ๊สซิสท์ {ink(home.reflect_value)}</span></div>
+
+            <div className="sec">เขียนรายชื่อเพิ่ม ในใบ “100 ชีวิตแห่งความเป็นไปได้” — ช่วง 10 นาทีแรก</div>
+            <div className="sec">บันทึกการโทรศัพท์เพื่อลงทะเบียน — ช่วง 1:30 ชั่วโมงแรก</div>
+            <div className="rrow"><span>จำนวนคนที่ได้คุย {ag(ac.talked,home.co_goal_talked)}</span><span style={{marginLeft:"auto"}}>จำนวนลงทะเบียน {ag(ac.reg,home.co_goal_reg)}</span></div>
+            <div className="rrow"><span>จำนวนผู้ที่สนใจลงทะเบียน {ag(ac.interested,home.co_goal_interested)}</span><span style={{marginLeft:"auto"}}>จำนวนเกสท์ {ag(ac.gst,home.co_goal_gst)}</span></div>
+            <div style={{fontSize:10.5,color:"#666"}}>* รูปแบบ ทำได้จริง / เป้าหมาย(คำสัญญา)</div>
+            <div style={{display:"flex",gap:10,marginTop:4}}>
+              <div style={{flex:1}}><div style={{fontWeight:700,marginBottom:2}}>บันทึกผู้สนใจลงทะเบียน:</div>
+                {Array.from({length:7}).map((_,i)=>{ const g=irows[i];
+                  return <div className="rline" key={i}><span>{i+1}.</span>{g?ink((g.guest_name||g.nickname||"")+" "+(g.interested||"")+" "+(g.whats_so||g.note||"")):<span>&nbsp;</span>}</div>; })}
+              </div>
+              <table className="grid"><thead><tr><th>R</th><th>L</th><th>P</th><th>Gst</th></tr></thead>
+                <tbody>{Array.from({length:7}).map((_,i)=>{ const s=irows[i]?statusOf(irows[i]):"";
+                  return <tr key={i}><td>{mk(s==="R")}</td><td>{mk(s==="L")}</td><td>{mk(s==="P")}</td><td>{mk(s==="Gst")}</td></tr>; })}</tbody></table>
+            </div>
+
+            <div className="sec">บันทึกการโทรศัพท์เพื่อเชิญเกสท์ — ช่วง 1 ชั่วโมงหลัง</div>
+            <div className="rrow"><span>จำนวนคนที่ได้คุย {ink("")}</span><span style={{marginLeft:"auto"}}>จำนวนเกสท์ {ag(ac.gst,home.co_goal_gst)}</span></div>
+            <div style={{fontWeight:700,margin:"6px 0 2px"}}>บันทึกเกสท์:</div>
+            <table className="gtab"><thead><tr><th style={{width:34}}>ลำดับ</th><th>ชื่อ</th><th style={{width:42}}>อายุ</th><th style={{width:90}}>อาชีพ</th><th>ความสนใจ</th><th style={{width:80}}>วันที่</th><th style={{width:42}}>รอ CF</th><th style={{width:36}}>CF</th></tr></thead>
+              <tbody>{Array.from({length:10}).map((_,i)=>{ const g=grows[i];
+                return <tr key={i}><td style={{textAlign:"center"}}>{i+1}</td><td>{g?ink(g.guest_name||g.nickname):""}</td><td>{g?ink(g.age):""}</td><td>{g?ink(g.occupation):""}</td>
+                  <td>{g?ink(g.whats_so||g.interested):""}</td><td>{g?ink(g.event_ref||g.contact_time||g.note):""}</td>
+                  <td style={{textAlign:"center"}}>{g?mk((g.cf||"")==="รอ CF"):""}</td><td style={{textAlign:"center"}}>{g?mk((g.cf||"")==="CF"):""}</td></tr>; })}</tbody></table>
+            <div style={{fontSize:10.5,color:"#666",marginTop:3}}>* หมายเหตุ: รายชื่อที่ระบุ “สนใจ/ไม่สนใจ” นับเป็นจำนวนคนที่ได้แบ่งปันไปแล้ว</div>
+
+            <div style={{fontWeight:700,margin:"8px 0 2px"}}>บันทึกรายละเอียด:</div>
+            <div className="rline">1. {ink(home.co_detail1)}</div>
+            <div className="rline">2. {ink(home.co_detail2)}</div>
+            <div className="legend">R = ลงทะเบียน · L = ลีด (สนใจลงทะเบียน ยังชำระไม่ได้คืนนี้ ต่อพรุ่งนี้) · P = เป็นไปได้ (สร้างให้เกิดลงทะเบียน/เชิญเข้าฟัง) · Gst = เกสท์ (แขกเชิญเข้าฟังการแนะนำ)</div>
+          </div>
+        </div>
+        <div className="modal-f"><button className="btn" onClick={onClose}>ปิด</button>
+          <button className="btn btn-primary" onClick={()=>window.print()}><SVG d={I.cal} size={15}/>พิมพ์ / บันทึกเป็นรูป</button></div>
+      </div>
+    </div>
+  );
+}
+function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
+  const list=guests.filter(g=>g.home_id===home.id);
+  const [showReport,setShowReport]=useState(false);
+  const evOpts=eventOptions(homes, home.host_name);
   const [il,setIl]=useState(home.intro_leader||""); const [zm,setZm]=useState(home.zoom_manager||"");
   const [busy,setBusy]=useState(false);
   const isCall=(home.kind||"Home")==="Call Out";
@@ -851,15 +977,16 @@ function GuestModal({home, guests, db, onChange, toast, onClose}){
             <table className="gtbl">
               <thead><tr>
                 <th className="num">No.</th><th>ชื่อแขก</th><th>ชื่อเล่น</th><th>เบอร์ติดต่อ</th><th>เวลาสะดวกติดต่อ</th>
-                <th>ผู้เชิญ</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th className="ctr">มา</th><th className="ctr">ลงทะเบียน</th><th>หมายเหตุ</th><th></th>
+                <th>ผู้เชิญ</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th>{isCall&&<><th>อายุ</th><th>อาชีพ</th></>}<th className="ctr">มา</th><th className="ctr">ลงทะเบียน</th>{isCall&&<><th className="ctr">R/L/P/Gst</th><th className="ctr">CF</th><th>วันที่อีเวนท์</th></>}<th>หมายเหตุ</th><th></th>
               </tr></thead>
               <tbody>
                 {list.length===0
-                  ? <tr><td colSpan={12} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
-                  : list.map((g,i)=><GuestRow key={g.id} g={g} idx={i} db={db} onChange={onChange} toast={toast} recount={recount} list={list} />)}
+                  ? <tr><td colSpan={isCall?17:12} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
+                  : list.map((g,i)=><GuestRow key={g.id} g={g} idx={i} db={db} onChange={onChange} toast={toast} recount={recount} list={list} isCall={isCall} evOpts={evOpts} />)}
               </tbody>
             </table>
           </div>
+          <div className="note" style={{padding:"8px 11px",marginTop:10,fontSize:12.5}}>หมายเหตุ: หากระบุ “สนใจ / ไม่สนใจ” ในแต่ละรายชื่อ จะนับเป็น <b>จำนวนคนที่ได้แบ่งปันไปแล้ว</b></div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,flexWrap:"wrap",gap:10}}>
             <button className="btn btn-sm" onClick={add}><SVG d={I.plus} size={15}/>{isCall?"เพิ่มรายชื่อ":"เพิ่มแขก"}</button>
             <div className="lead-sub">{isCall?<>รวม <b>{total}</b> ติดต่อ</>:<>รายชื่อ <b>{total}</b> · มา <b>{came}</b> (=Guest)</>} · ลงทะเบียน <b>{R}</b> · สนใจ {list.filter(g=>g.interested==="สนใจ").length} · ไม่สนใจ {list.filter(g=>g.interested==="ไม่สนใจ").length}</div>
@@ -871,14 +998,30 @@ function GuestModal({home, guests, db, onChange, toast, onClose}){
               {REFLECT_FIELDS.map(f=><ReflectField key={f.k} home={home} field={f.k} label={f.label} ph={f.ph} db={db} onChange={onChange} />)}
             </div>
           </div>
+          {isCall && (()=>{ const ac=coActuals(list); const goalMap={co_goal_talked:ac.talked,co_goal_interested:ac.interested,co_goal_reg:ac.reg,co_goal_gst:ac.gst}; return (
+            <div style={{marginTop:18,borderTop:"1px dashed var(--line)",paddingTop:16}}>
+              <h3 style={{margin:"0 0 3px",fontSize:16,display:"flex",alignItems:"center",gap:8}}><SVG d={I.phone} size={17}/>ข้อมูลสำหรับรายงาน Call Out</h3>
+              <p className="lead" style={{margin:"0 0 12px"}}>กรอกหัวรายงาน + ตั้งเป้าหมาย (คำสัญญา) ตอนเริ่ม · กด “พิมพ์รายงาน” เพื่อออกเป็นฟอร์ม</p>
+              <div className="two">
+                {CO_HEAD.map(f=><HField key={f.k} home={home} field={f.k} label={f.label} db={db} onChange={onChange} />)}
+                <div className="field"><label>กลุ่ม</label>
+                  <select className="sel" value={home.host_group==null?"":String(home.host_group)} onChange={async e=>{ const v=e.target.value; try{ await db.updateHome(home.id,{host_group:(v===""?null:parseInt(v))}); onChange(); }catch(err){} }}>
+                    <option value="">— เลือกกลุ่ม —</option>{Array.from({length:16},(_,i)=>i+1).map(n=><option key={n} value={n}>กลุ่ม {n}</option>)}</select></div>
+              </div>
+              <div className="lead-sub" style={{fontWeight:700,margin:"14px 0 6px"}}>🎯 เป้าหมาย / คำสัญญา (ตั้งไว้ตอนเริ่ม) — วงเล็บคือทำได้แล้ว</div>
+              <div className="two">{CO_GOALS.map(f=><HField key={f.k} home={home} field={f.k} label={f.label+" — เป้าหมาย (ทำได้ "+goalMap[f.k]+")"} ph="เช่น 4" db={db} onChange={onChange} />)}</div>
+              <div className="two" style={{marginTop:14}}>{CO_TEXT.map(f=><HField key={f.k} home={home} field={f.k} label={f.label} db={db} onChange={onChange} />)}</div>
+            </div>); })()}
         </div>
         <div className="modal-f">
           <button className="btn" onClick={onClose}>ปิด (บันทึกอัตโนมัติแล้ว)</button>
+          {isCall && <button className="btn btn-amber" onClick={()=>setShowReport(true)}><SVG d={I.cal} size={15}/>พิมพ์รายงาน</button>}
           {!home.completed
             ? <button className="btn btn-primary" disabled={busy} onClick={finish}><SVG d={I.flag} size={15}/>{busy?"กำลังบันทึก…":"จบงาน + สรุปผล"}</button>
             : <button className="btn btn-amber" onClick={async()=>{ await saveHdr({completed:false}); toast("เปิดงานกลับมาแล้ว"); }}>เปิดงานกลับ</button>}
         </div>
       </div>
+      {showReport && <CallReport home={home} guests={guests} onClose={()=>setShowReport(false)} />}
     </div>
   );
 }
@@ -940,7 +1083,7 @@ function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
                 <h3>ไม่พบงานตามตัวกรอง</h3><p>ลองเปลี่ยนเงื่อนไข หรือกดล้างตัวกรองเพื่อดูทุกงาน</p>
                 <button className="btn" onClick={clear}><SVG d={I.x} size={15}/>ล้างตัวกรอง</button></div>
             : <div className="deck">
-                {filtered.map(h=><EventCard key={h.id} home={h} signups={signups} guests={guests} db={db} onChange={onChange} toast={toast}/>)}
+                {filtered.map(h=><EventCard key={h.id} home={h} signups={signups} guests={guests} homes={homes} db={db} onChange={onChange} toast={toast}/>)}
                 {!active && <button className="addcard" onClick={onCreate}><div><div className="plus"><SVG d={I.plus} size={22}/></div><b>สร้างงาน Home</b><span>เพิ่มงานใหม่ลงบอร์ด</span></div></button>}
               </div>}
         </>}
@@ -992,7 +1135,7 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
                 </div>
               ); })}
           </div>}
-      {guestFor && <GuestModal home={guestFor} guests={guests||[]} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
+      {guestFor && <GuestModal home={guestFor} guests={guests||[]} homes={homes} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
       {editFor && <CreateModal home={editFor} db={db} onChange={onChange} toast={toast} onClose={()=>setEditFor(null)} />}
     </div>
   );
@@ -1199,7 +1342,7 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
       {q && mine.length>0 && <div style={{marginTop:16}}><HostActivityTable mine={mine} signups={signups} /></div>}
       {q && mine.length>0 && <div style={{marginTop:16}}><HostReflectTable mine={mine} /></div>}
       {completeFor && <CompleteModal home={completeFor} db={db} onChange={onChange} toast={toast} onClose={()=>setCompleteFor(null)} />}
-      {guestFor && <GuestModal home={guestFor} guests={guests||[]} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
+      {guestFor && <GuestModal home={guestFor} guests={guests||[]} homes={homes} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
       {editFor && <CreateModal home={editFor} db={db} onChange={onChange} toast={toast} onClose={()=>setEditFor(null)} />}
     </div>
   );
