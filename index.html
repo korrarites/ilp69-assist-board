@@ -469,6 +469,32 @@ async function shareHome(home, toast){ const url=cardLink(home.id); const title=
   if(navigator.share){ try{ await navigator.share({title,url}); return; }catch(e){ if(e&&e.name==="AbortError") return; } }
   try{ await navigator.clipboard.writeText(url); toast("คัดลอกลิงก์การ์ดแล้ว — แชร์ได้เลย ✦"); }
   catch(e){ window.prompt("คัดลอกลิงก์นี้เพื่อแชร์:", url); } }
+/* สร้างลิงก์เพิ่ม event ลง Google Calendar พร้อมรายละเอียด */
+function gcalUrl(home){
+  const pad=n=>String(n).padStart(2,"0"); const ymd=(home.event_date||"").replace(/-/g,"");
+  const m=(home.time_slot||"").match(/(\d{1,2})[.:](\d{2})\s*-\s*(\d{1,2})[.:](\d{2})/);
+  let dates;
+  if(m && ymd){ dates=`${ymd}T${pad(m[1])}${m[2]}00/${ymd}T${pad(m[3])}${m[4]}00`; }
+  else if(ymd){ const d=new Date(home.event_date+"T00:00:00"); const nx=new Date(d.getTime()+86400000);
+    dates=`${ymd}/${nx.getFullYear()}${pad(nx.getMonth()+1)}${pad(nx.getDate())}`; }
+  const title=(home.kind||"Home")+" · "+(home.title||home.host_name||"ILP69");
+  const onsite=/onsite|พบตัว/i.test(home.channel||""); const loc=(onsite&&home.address)?home.address:(home.channel||"");
+  const details=[
+    "ผู้จัด: "+(home.host_name||"-"),
+    home.kind?("ประเภท: "+home.kind):"",
+    home.time_slot?("เวลา: "+home.time_slot):"",
+    home.intro_leader?("Introduction Leader: "+home.intro_leader):"",
+    home.zoom_manager?("Zoom Manager: "+home.zoom_manager):"",
+    home.channel?("ช่องทาง: "+home.channel):"",
+    (!onsite&&home.address)?("Address: "+home.address):"",
+    home.host_contact?("ติดต่อ Host: "+home.host_contact):"",
+    home.note?("หมายเหตุ: "+home.note):"",
+    "ลิงก์การ์ด: "+cardLink(home.id),
+  ].filter(Boolean).join("\n");
+  const p=new URLSearchParams({action:"TEMPLATE",text:title,details,ctz:"Asia/Bangkok"});
+  if(dates) p.set("dates",dates); if(loc) p.set("location",loc);
+  return "https://calendar.google.com/calendar/render?"+p.toString();
+}
 function SVG({d,size=16,sw=1.7}){ return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{d}</svg>; }
 const I={
   clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
@@ -615,6 +641,7 @@ function EventCard({home, signups, guests, db, onChange, toast}){
         <div style={{display:"flex",gap:8,marginTop:8}}>
           <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGOpen(true)}>
             <SVG d={I.users} size={15}/>{(home.kind||"Home")==="Call Out"?"รายชื่อติดต่อ":"รายละเอียดแขก"}{glist.length>0?((home.kind||"Home")==="Call Out"?` · ${glist.length} ติดต่อ · ${glist.filter(g=>g.registered).length}R`:` · ${glist.filter(g=>g.attended).length}G ${glist.filter(g=>g.registered).length}R`):""}</button>
+          <a className="btn btn-ghost btn-sm share-ic" title="เพิ่มลง Google Calendar" href={gcalUrl(home)} target="_blank" rel="noopener noreferrer"><SVG d={I.cal} size={15}/></a>
           <button className="btn btn-ghost btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(home,toast)}><SVG d={I.share} size={15}/></button>
         </div>
       </div>}
@@ -959,6 +986,7 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
                     <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGuestFor(h)}>
                       <SVG d={I.users} size={15}/>{(h.kind||"Home")==="Call Out"?"ติดต่อ":"แขก"}{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);const cl=(h.kind||"Home")==="Call Out";return gl.length?(cl?` · ${gl.length} · ${gl.filter(x=>x.registered).length}R`:` · ${gl.filter(x=>x.attended).length}G ${gl.filter(x=>x.registered).length}R`):"";})()}</button>
                     <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไข</button>
+                    <a className="btn btn-sm share-ic" title="เพิ่มลง Google Calendar" href={gcalUrl(h)} target="_blank" rel="noopener noreferrer"><SVG d={I.cal} size={15}/></a>
                     <button className="btn btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(h,toast)}><SVG d={I.share} size={15}/></button>
                   </div>}
                 </div>
@@ -1159,6 +1187,7 @@ function HostView({homes, signups, guests, db, onChange, toast, onCreate}){
                 <div style={{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}}>
                   <button className="btn btn-sm btn-amber" onClick={()=>setGuestFor(h)}><SVG d={I.users} size={14}/>{(h.kind||"Home")==="Call Out"?"ติดต่อ":"รายละเอียดแขก"}{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);const cl=(h.kind||"Home")==="Call Out";return gl.length?(cl?` · ${gl.length} · ${gl.filter(x=>x.registered).length}R`:` · ${gl.filter(x=>x.attended).length}G ${gl.filter(x=>x.registered).length}R`):"";})()}</button>
                   <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไขงาน</button>
+                  <a className="btn btn-sm" title="เพิ่มลง Google Calendar" href={gcalUrl(h)} target="_blank" rel="noopener noreferrer"><SVG d={I.cal} size={14}/>ปฏิทิน</a>
                   {h.completed ? <button className="btn btn-sm" onClick={()=>reopen(h)}>เปิดงานกลับ</button>
                     : <button className="btn btn-sm btn-primary" onClick={()=>setCompleteFor(h)}><SVG d={I.flag} size={14}/>จบงาน + ใส่ผล</button>}
                   <button className="btn btn-sm btn-ghost" title="ลบงาน" onClick={()=>del(h)}><SVG d={I.trash} size={16}/></button>
