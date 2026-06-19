@@ -318,9 +318,10 @@
     @page{size:A4 landscape;margin:8mm}
     body{background:#fff!important}
     body *{visibility:hidden!important}
-    #callrpt, #callrpt *, #wkrpt, #wkrpt *{visibility:visible!important}
+    #callrpt, #callrpt *, #wkrpt, #wkrpt *, #pgrpt, #pgrpt *{visibility:visible!important}
     #callrpt{position:absolute;left:0;top:0;width:760px;padding:0}
     #wkrpt{position:absolute;left:0;top:0;width:100%;padding:0}
+    #pgrpt{position:absolute;left:0;top:0;width:100%;padding:0}
     .scrim{position:static!important;background:none!important;padding:0!important;display:block!important;overflow:visible!important}
     .modal{box-shadow:none!important;border:none!important;max-width:none!important}
     .modal-h,.modal-f,.rpt-actions{display:none!important}
@@ -339,6 +340,13 @@
   .wktbl td.q{background:var(--paper);font-weight:600;min-width:200px;max-width:240px}
   .wktbl td .a{color:#16389e}
   .wktbl tr.sec td{background:#0E211C;color:#D9EDE6;font-family:"Bai Jamjuree";font-weight:700}
+  /* progress results form */
+  .pg .ink{color:#16389e;font-weight:600}
+  .pgtbl{border-collapse:collapse;width:100%;font-size:11px}
+  .pgtbl th,.pgtbl td{border:1px solid #111;padding:2px 5px;height:20px;vertical-align:middle}
+  .pgtbl th{background:#f2f2f2;font-weight:700;text-align:center;font-size:10.5px}
+  .pg .src td{text-align:center;width:24px}
+  .pg .tot{font-weight:700;background:#fafafa}
   .skeleton{background:linear-gradient(90deg,#eee,#f6f5f0,#eee);background-size:200% 100%;animation:sk 1.2s infinite;border-radius:8px}
   @keyframes sk{to{background-position:-200% 0}}
   .footer{max-width:1180px;margin:0 auto;padding:24px 20px 40px;color:var(--muted);font-size:12.5px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line)}
@@ -437,19 +445,24 @@ function makeSupabaseDB(cfg){
     async createWeekly(w){ const {data,error}=await sb.from("ilp69_weekly").insert(w).select("id").single(); if(error) throw error; return data.id; },
     async updateWeekly(id,p){ const {error}=await sb.from("ilp69_weekly").update(p).eq("id",id); if(error) throw error; },
     async deleteWeekly(id){ const {error}=await sb.from("ilp69_weekly").delete().eq("id",id); if(error) throw error; },
+    async listProgress(){ const {data,error}=await sb.from("ilp69_progress").select("*").order("period_end",{ascending:false}); if(error) throw error; return data||[]; },
+    async createProgress(w){ const {data,error}=await sb.from("ilp69_progress").insert(w).select("id").single(); if(error) throw error; return data.id; },
+    async updateProgress(id,p){ const {error}=await sb.from("ilp69_progress").update(p).eq("id",id); if(error) throw error; },
+    async deleteProgress(id){ const {error}=await sb.from("ilp69_progress").delete().eq("id",id); if(error) throw error; },
     async countHomes(){ const {count,error}=await sb.from("ilp69_homes").select("id",{count:"exact",head:true}); if(error) throw error; return count||0; },
     subscribe(cb){ const ch=sb.channel("ilp69-rt")
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_homes"},cb)
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_signups"},cb)
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_guests"},cb)
-      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_weekly"},cb).subscribe();
+      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_weekly"},cb)
+      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_progress"},cb).subscribe();
       return ()=>{try{sb.removeChannel(ch)}catch(e){}}; }
   };
 }
 function makeDemoDB(){
   const K="ilp69_demo_v3";
-  const read=()=>{ let d; try{d=JSON.parse(localStorage.getItem(K)||'{"homes":[],"signups":[],"guests":[],"logs":[],"weekly":[]}')}catch(e){d={homes:[],signups:[],guests:[],logs:[],weekly:[]}}
-    d.homes=d.homes||[]; d.signups=d.signups||[]; d.guests=d.guests||[]; d.logs=d.logs||[]; d.weekly=d.weekly||[]; return d; };
+  const read=()=>{ let d; try{d=JSON.parse(localStorage.getItem(K)||'{"homes":[],"signups":[],"guests":[],"logs":[],"weekly":[],"progress":[]}')}catch(e){d={homes:[],signups:[],guests:[],logs:[],weekly:[],progress:[]}}
+    d.homes=d.homes||[]; d.signups=d.signups||[]; d.guests=d.guests||[]; d.logs=d.logs||[]; d.weekly=d.weekly||[]; d.progress=d.progress||[]; return d; };
   const write=(d)=>{ localStorage.setItem(K,JSON.stringify(d)); window.dispatchEvent(new Event("ilp69-demo-change")); };
   const uid=()=>(crypto.randomUUID?crypto.randomUUID():"id"+Date.now()+Math.random().toString(16).slice(2));
   if(!localStorage.getItem(K)){
@@ -478,6 +491,10 @@ function makeDemoDB(){
     async createWeekly(w){ const d=read(); const id=uid(); d.weekly.push({...w,id,created_at:new Date().toISOString()}); write(d); return id; },
     async updateWeekly(id,p){ const d=read(); d.weekly=d.weekly.map(x=>x.id===id?{...x,...p}:x); write(d); },
     async deleteWeekly(id){ const d=read(); d.weekly=d.weekly.filter(x=>x.id!==id); write(d); },
+    async listProgress(){ return read().progress.slice().sort((a,b)=>((b.period_end||"")+"").localeCompare((a.period_end||"")+"")); },
+    async createProgress(w){ const d=read(); const id=uid(); d.progress.push({...w,id,created_at:new Date().toISOString()}); write(d); return id; },
+    async updateProgress(id,p){ const d=read(); d.progress=d.progress.map(x=>x.id===id?{...x,...p}:x); write(d); },
+    async deleteProgress(id){ const d=read(); d.progress=d.progress.filter(x=>x.id!==id); write(d); },
     async countHomes(){ return read().homes.length; },
     subscribe(cb){ const f=()=>cb(); window.addEventListener("ilp69-demo-change",f); window.addEventListener("storage",f);
       return ()=>{window.removeEventListener("ilp69-demo-change",f);window.removeEventListener("storage",f);}; }
@@ -1463,11 +1480,164 @@ function WeeklySummary({list, onOpen}){
     </div>
   );
 }
-function HostView({homes, signups, guests, weeklies, db, onChange, toast, onCreate}){
-  const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null); const [weeklyEditId,setWeeklyEditId]=useState(null); const [hostTab,setHostTab]=useState("guest");
+/* ===== Progress Results report (ผลลัพธ์ที่คืบหน้าของโปรแกรมภาวะผู้นำ) ===== */
+function beDate(s, full){ if(!s) return ""; const d=new Date(s+"T00:00:00"); const dd=String(d.getDate()).padStart(2,"0"); const mm=String(d.getMonth()+1).padStart(2,"0"); const by=d.getFullYear()+543; return dd+"/"+mm+"/"+(full?by:String(by).slice(-2)); }
+const PROG_HEAD=[{k:"no_id",label:"NO เลขที่"},{k:"cohort",label:"รุ่น"},{k:"il_coach",label:"IL COACH โค้ชไอแอล"},{k:"staff_coach",label:"STAFF COACH โค้ชสตาฟ"},{k:"nickname",label:"NICKNAME ชื่อเล่น"},{k:"name",label:"NAME ชื่อ"}];
+const PROG_NRM=(s)=>(s||"").trim().replace(/\s+/g," ");
+function progressData(homes, guests, host, ps, pe){
+  const key=PROG_NRM(host); const hostHomes=(homes||[]).filter(h=>PROG_NRM(h.host_name)===key);
+  const homeById={}; hostHomes.forEach(h=>homeById[h.id]=h);
+  const myGuests=(guests||[]).filter(g=>homeById[g.home_id]);
+  const inP=(d)=> !!d && (!ps||d>=ps) && (!pe||d<=pe);
+  const SRC={"Home":"HI","Center Intro":"CI","Evening Session":"ES","Call Out":"Per C/O"};
+  const isReg=(g,h)=> (h.kind||"Home")==="Call Out" ? (g.call_status==="R"||!!g.registered) : !!g.registered;
+  const guestRows=myGuests.filter(g=>{const h=homeById[g.home_id];const k=h.kind||"Home";return g.attended&&k!=="Call Out"&&inP(h.event_date);})
+    .map(g=>{const h=homeById[g.home_id];return {name:(g.guest_name||g.nickname||"-"),src:SRC[h.kind||"Home"],date:h.event_date};})
+    .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const regRows=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h)&&inP(h.event_date);})
+    .map(g=>{const h=homeById[g.home_id];const k=h.kind||"Home";return {name:(g.guest_name||g.nickname||"-"),src:SRC[k],date:h.event_date};})
+    .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const callOuts=hostHomes.filter(h=>(h.kind||"Home")==="Call Out").sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||""));
+  const callRows=callOuts.map((h,i)=>({no:i+1,date:h.event_date,time:h.time_slot})).filter(r=>inP(r.date));
+  const assistCount=callOuts.length;
+  const totalGuests=myGuests.filter(g=>{const h=homeById[g.home_id];return g.attended&&(h.kind||"Home")!=="Call Out";}).length;
+  const totalReg=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h);}).length;
+  const today=new Date(); const todayStr=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+  const homeIntroSuccess=hostHomes.filter(h=>(h.kind||"Home")==="Home").filter(h=>{
+    if(!h.event_date||h.event_date>todayStr) return false; /* นับเฉพาะที่เกิดขึ้นแล้ว ไม่นับอนาคต */
+    const att=myGuests.filter(g=>g.home_id===h.id&&g.attended).length; return Math.max(att,h.result_g||0)>=MIN_GUEST; }).length;
+  return {guestRows, regRows, callRows, assistCount, totalGuests, totalReg, homeIntroSuccess};
+}
+function ProgressReport({rep, data, onClose}){
+  const ink=(v)=> (v||v===0)&&v!==""?<span className="ink">{v}</span>:<span>&nbsp;</span>;
+  const range=(rep.period_start||rep.period_end)?("("+beDate(rep.period_start)+"-"+beDate(rep.period_end)+"/"+((new Date((rep.period_end||rep.period_start)+"T00:00:00").getFullYear())+543)+")"):"";
+  const weekTxt=[rep.week_label||"", range].filter(Boolean).join(" ");
+  const G=data.guestRows, R=data.regRows, C=data.callRows;
+  const grows=Array.from({length:Math.max(15,G.length)},(_,i)=>G[i]||null);
+  const rrows=Array.from({length:Math.max(10,R.length)},(_,i)=>R[i]||null);
+  const wrows=Array.from({length:5},()=>null);
+  const SC=["HI","CI","Per C/O","CWC","ES (Per)","ES (Oth)"];
+  const tick=(row,c)=>{ if(!row) return ""; if(c==="HI"&&row.src==="HI")return "/"; if(c==="CI"&&row.src==="CI")return "/"; if(c==="Per C/O"&&row.src==="Per C/O")return "/"; if(c==="ES (Per)"&&row.src==="ES")return "/"; return ""; };
+  const fn=("progress-"+(rep.host_name||"")+"-"+(rep.period_end||"")).replace(/\s+/g,"");
+  return (
+    <div className="scrim" onMouseDown={ev=>ev.target===ev.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:1180,background:"#fff"}}>
+        <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.trophy} size={18}/></div>
+          <div style={{flex:1}}><h3>รายงานผลลัพธ์ (Progress Results)</h3><p>{rep.host_name} · {weekTxt||"—"}</p></div>
+          <button className="btn btn-primary btn-sm" onClick={()=>downloadImage("pgrpt",fn)} style={{marginRight:8}}><SVG d={I.cal} size={14}/>ดาวน์โหลดรูป</button>
+          <button className="btn btn-sm" onClick={()=>window.print()} style={{marginRight:8}}>พิมพ์ฟอร์ม</button>
+          <button className="xbtn" onClick={onClose}><SVG d={I.x} size={18}/></button></div>
+        <div className="modal-b rpt-wrap">
+          <div id="pgrpt" className="pg" style={{width:1120,background:"#fff",color:"#111",padding:"14px 16px",fontFamily:'Inter,"Bai Jamjuree",sans-serif',fontSize:12,lineHeight:1.3}}>
+            <div style={{display:"flex",gap:6,alignItems:"baseline",flexWrap:"wrap",fontSize:11.5}}>
+              <span>NO เลขที่ <b>{ink(rep.no_id)}</b></span><span style={{marginLeft:8}}>โปรแกรมภาวะผู้นำ รุ่น <b>{ink(rep.cohort)}</b></span>
+              <span style={{flex:1,textAlign:"center",fontWeight:700,fontSize:13,textDecoration:"underline"}}>Landmark แลนด์มาร์ค</span>
+              <span>IL COACH โค้ชไอแอล <b>{ink(rep.il_coach)}</b></span><span style={{marginLeft:8}}>STAFF COACH โค้ชสตาฟ <b>{ink(rep.staff_coach)}</b></span></div>
+            <div style={{textAlign:"center",fontWeight:700,marginTop:2}}>THE INTRODUCTION LEADERS PROGRAM PROGRESS RESULTS / ผลลัพธ์ที่คืบหน้าของโปรแกรมภาวะผู้นำ</div>
+            <div style={{fontSize:10.5,color:"#444",marginTop:3}}>To be completed and submitted before each classroom/weekend either in person, email or by fax.<br/>ทำให้สมบูรณ์แบบและส่ง ก่อนคลาสรูม/วีคเอ็นด์แต่ละครั้ง ด้วยตัวคุณเอง อีเมล์ หรือทางแฟกซ์</div>
+            <div style={{display:"flex",gap:24,marginTop:5,paddingBottom:6,borderBottom:"1px solid #111",fontSize:11.5}}>
+              <span>NICKNAME ชื่อเล่น <b>{ink(rep.nickname)}</b></span><span>NAME ชื่อ <b>{ink(rep.name)}</b></span>
+              <span style={{marginLeft:"auto"}}>WEEK สัปดาห์ <b>{ink(weekTxt)}</b></span></div>
+            <div style={{display:"flex",gap:12,marginTop:8,alignItems:"flex-start"}}>
+              {/* LEFT: guests */}
+              <div style={{width:360}}>
+                <div style={{fontWeight:700,fontSize:11}}>I ) NUMBER OF GUESTS BROUGHT TO LANDMARK EVENTS:</div>
+                <div style={{fontSize:10.5,color:"#444",marginBottom:4}}>จำนวนของแขกรับเชิญที่คุณเชิญมาในงานต่างๆ ของแลนด์มาร์ค</div>
+                <table className="pgtbl"><thead>
+                  <tr><th style={{width:18}}>#</th><th>Name of Guests<div style={{fontWeight:400,fontSize:9.5}}>ชื่อของแขกรับเชิญ</div></th><th style={{width:88}}>Date of Event<div style={{fontWeight:400,fontSize:9.5}}>วันที่ของงาน</div></th></tr></thead>
+                  <tbody>{grows.map((r,i)=><tr key={i}><td style={{textAlign:"center"}}>{i+1}</td><td>{r?<span className="ink">{r.name} ({r.src})</span>:<span>&nbsp;</span>}</td><td style={{textAlign:"center"}}>{r?ink(beDate(r.date)):<span>&nbsp;</span>}</td></tr>)}
+                  <tr className="tot"><td colSpan={2}>Total Guests / รวมจำนวนแขก</td><td style={{textAlign:"center"}}><b className="ink">{data.totalGuests}/{rep.goal_guest!=null?rep.goal_guest:25}</b></td></tr>
+                  <tr className="tot"><td colSpan={2}>Total Registration / รวมลงทะเบียน</td><td style={{textAlign:"center"}}><b className="ink">{data.totalReg}/{rep.goal_reg!=null?rep.goal_reg:12}</b></td></tr>
+                  </tbody></table>
+              </div>
+              {/* RIGHT: registrations */}
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:11}}>II) NUMBER OF LANDMARK FORUM REGISTRATIONS COMPLETED / REGISTRATION EFFECTIVENESS:</div>
+                <div style={{fontSize:10.5,color:"#444",marginBottom:4}}>จำนวนของการลงทะเบียนแลนด์มาร์คฟอรั่มที่สมบูรณ์ / ประสิทธิผลการลงทะเบียน</div>
+                <table className="pgtbl"><thead>
+                  <tr><th rowSpan={2} style={{width:18}}>#</th><th rowSpan={2}>Name of Registration<div style={{fontWeight:400,fontSize:9.5}}>ชื่อของผู้ลงทะเบียน</div></th><th rowSpan={2} style={{width:78}}>Date of Reg.<div style={{fontWeight:400,fontSize:9.5}}>วันที่ลงทะเบียน</div></th><th colSpan={6}>Registration Source / แหล่งที่มาของการลงทะเบียน</th><th rowSpan={2} style={{width:46}}>Corp./Pkg.</th></tr>
+                  <tr>{SC.map(c=><th key={c} style={{width:30,fontSize:9.5}}>{c}</th>)}</tr></thead>
+                  <tbody>{rrows.map((r,i)=><tr key={i}><td style={{textAlign:"center"}}>{i+1}</td><td>{r?ink(r.name):<span>&nbsp;</span>}</td><td style={{textAlign:"center"}}>{r?ink(beDate(r.date)):<span>&nbsp;</span>}</td>{SC.map(c=><td key={c} className="src"><span className="ink" style={{fontWeight:800}}>{tick(r,c)}</span></td>)}<td></td></tr>)}</tbody></table>
+                <div style={{display:"flex",gap:10,marginTop:8,alignItems:"flex-start"}}>
+                  <div style={{flex:1}}>
+                    <table className="pgtbl"><thead><tr><th style={{width:18}}>#</th><th>Withdrawn / ถอนการลงทะเบียน</th></tr></thead>
+                      <tbody>{wrows.map((r,i)=><tr key={i}><td style={{textAlign:"center"}}>{i+1}</td><td>&nbsp;</td></tr>)}</tbody></table>
+                  </div>
+                  <div style={{width:330}}>
+                    <table className="pgtbl"><thead><tr><th colSpan={3}>Assisting Completed / จำนวนครั้งที่มาแอ๊สซิสท์แล้ว &nbsp; <span className="ink" style={{fontWeight:800}}>{data.assistCount}</span> of 26</th></tr>
+                      <tr><th style={{width:34}}>No.</th><th>Date วันที่</th><th>Time เวลา</th></tr></thead>
+                      <tbody>{(C.length?C:[null,null,null]).map((r,i)=><tr key={i}><td style={{textAlign:"center"}}>{r?ink(r.no):<span>&nbsp;</span>}</td><td style={{textAlign:"center"}}>{r?ink(beDate(r.date,true)):<span>&nbsp;</span>}</td><td style={{textAlign:"center"}}>{r?ink(r.time):<span>&nbsp;</span>}</td></tr>)}</tbody></table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style={{fontSize:9.5,color:"#444",marginTop:8,textAlign:"center"}}>ES (PER) = อีฟนิ่งเซสชั่น (เกสท์เป็นคนในชีวิต), ES (OTH) = อีฟนิ่งเซสชั่น (เกสท์คนอื่น), CI = อินโทรในเซ็นเตอร์, HI = โฮมอินโทร · Per = ลงทะเบียนส่วนตัว, Call Out = ลงทะเบียนส่วนตัวทางโทรศัพท์, CWC = โทรศัพท์ลงทะเบียนจากการ์ด</div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:4,fontSize:11,fontWeight:700}}>
+              <span>** จำนวนโฮมอินโทรที่เกิด (4 เกสท์ขึ้นไป) รวม <span className="ink" style={{fontSize:13}}>{data.homeIntroSuccess}</span> ครั้ง **</span>
+              <span style={{fontWeight:400,fontSize:10}}>** Number of Home Intro that occurred (at least 4 guests showed up) total {data.homeIntroSuccess} **</span></div>
+          </div>
+        </div>
+        <div className="modal-f"><button className="btn" onClick={onClose}>ปิด</button>
+          <button className="btn" onClick={()=>window.print()}>พิมพ์ฟอร์ม</button>
+          <button className="btn btn-primary" onClick={()=>downloadImage("pgrpt",fn)}><SVG d={I.cal} size={15}/>ดาวน์โหลดรูป (PNG)</button></div>
+      </div>
+    </div>
+  );
+}
+function ProgressModal({rep, homes, guests, db, onChange, toast, onClose}){
+  const [f,setF]=useState({...rep}); useEffect(()=>{ setF({...rep}); },[rep.id]);
+  const [showReport,setShowReport]=useState(false);
+  const save=async(patch)=>{ try{ await db.updateProgress(rep.id,patch); onChange(); }catch(e){ toast("บันทึกไม่สำเร็จ: "+(e.message||e)); } };
+  const setH=(k,v)=>setF(s=>({...s,[k]:v}));
+  const blurH=(k)=>{ const nv=(f[k]||"").trim?(f[k]||"").trim():f[k]; if((nv||"")!==(rep[k]||"")) save({[k]:nv||null}); };
+  const data=progressData(homes, guests, rep.host_name, f.period_start, f.period_end);
+  return (
+    <div className="scrim" onMouseDown={ev=>ev.target===ev.currentTarget&&onClose()}>
+      <div className="modal lg">
+        <div className="modal-h"><div className="mark" style={{width:38,height:38}}><SVG d={I.trophy} size={18}/></div>
+          <div style={{flex:1}}><h3>รายงานผลลัพธ์ (Progress Results)</h3><p>{rep.host_name} · เลือกช่วงเวลา → ดึงข้อมูลอัตโนมัติ · บันทึกอัตโนมัติ</p></div>
+          <button className="btn btn-amber btn-sm" onClick={()=>setShowReport(true)} style={{marginRight:8}}><SVG d={I.cal} size={14}/>พิมพ์/ดาวน์โหลด</button>
+          <button className="xbtn" onClick={onClose}><SVG d={I.x} size={18}/></button></div>
+        <div className="modal-b">
+          <div className="two">
+            <div className="field"><label>ชื่อช่วงเวลา (WEEK) — เช่น คลาสรูม 2</label><input className="inp" value={f.week_label||""} placeholder="เช่น คลาสรูม 2" onChange={e=>setH("week_label",e.target.value)} onBlur={()=>blurH("week_label")} /></div>
+            <div className="field"><label>วันที่เริ่ม</label><input className="inp" type="date" value={f.period_start||""} onChange={e=>{setH("period_start",e.target.value); save({period_start:e.target.value||null});}} /></div>
+            <div className="field"><label>วันที่สิ้นสุด</label><input className="inp" type="date" value={f.period_end||""} onChange={e=>{setH("period_end",e.target.value); save({period_end:e.target.value||null});}} /></div>
+            <div className="field"><label>เป้าหมายจำนวนแขก</label><input className="inp" type="number" value={f.goal_guest!=null?f.goal_guest:25} onChange={e=>setH("goal_guest",e.target.value)} onBlur={()=>{ const v=f.goal_guest===""||f.goal_guest==null?25:parseInt(f.goal_guest,10)||0; if(v!==(rep.goal_guest!=null?rep.goal_guest:25)) save({goal_guest:v}); }} /></div>
+            <div className="field"><label>เป้าหมายลงทะเบียน</label><input className="inp" type="number" value={f.goal_reg!=null?f.goal_reg:12} onChange={e=>setH("goal_reg",e.target.value)} onBlur={()=>{ const v=f.goal_reg===""||f.goal_reg==null?12:parseInt(f.goal_reg,10)||0; if(v!==(rep.goal_reg!=null?rep.goal_reg:12)) save({goal_reg:v}); }} /></div>
+          </div>
+          <div className="two" style={{marginTop:4}}>
+            {PROG_HEAD.map(h=><div className="field" key={h.k}><label>{h.label}</label><input className="inp" value={f[h.k]||""} onChange={e=>setH(h.k,e.target.value)} onBlur={()=>blurH(h.k)} /></div>)}
+          </div>
+          <div className="panel" style={{marginTop:14,padding:"12px 14px",background:"var(--paper)"}}>
+            <div className="eyebrow" style={{marginBottom:8}}>ตัวอย่างข้อมูลที่ดึงมา (ตามช่วงเวลาที่เลือก)</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:18,fontSize:13}}>
+              <div><b>{data.guestRows.length}</b> แขกที่มา (ในช่วง)</div>
+              <div><b>{data.regRows.length}</b> ลงทะเบียน (ในช่วง)</div>
+              <div><b>{data.callRows.length}</b> Call Out (ในช่วง)</div>
+              <div>รวมแขกทั้งหมด <b>{data.totalGuests}</b>/{f.goal_guest!=null?f.goal_guest:25}</div>
+              <div>รวมลงทะเบียนทั้งหมด <b>{data.totalReg}</b>/{f.goal_reg!=null?f.goal_reg:12}</div>
+              <div>Assist <b>{data.assistCount}</b>/26</div>
+              <div>Home Intro สำเร็จ (เกิดแล้ว) <b>{data.homeIntroSuccess}</b></div>
+            </div>
+            <p className="lead" style={{marginTop:8,marginBottom:0}}>* รายชื่อแขก/ลงทะเบียน = เฉพาะช่วงที่เลือก · ยอดรวม = ทั้งหมดที่บันทึกในโปรแกรม · กด “พิมพ์/ดาวน์โหลด” เพื่อดูฟอร์มเต็ม</p>
+          </div>
+        </div>
+        <div className="modal-f"><button className="btn" onClick={onClose}>ปิด (บันทึกอัตโนมัติแล้ว)</button>
+          <button className="btn btn-primary" onClick={()=>setShowReport(true)}><SVG d={I.cal} size={15}/>พิมพ์/ดาวน์โหลด</button></div>
+      </div>
+      {showReport && <ProgressReport rep={f} data={data} onClose={()=>setShowReport(false)} />}
+    </div>
+  );
+}
+function HostView({homes, signups, guests, weeklies, progress, db, onChange, toast, onCreate}){
+  const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null); const [weeklyEditId,setWeeklyEditId]=useState(null); const [progressEditId,setProgressEditId]=useState(null); const [hostTab,setHostTab]=useState("guest");
   const myWeeklies=q?(weeklies||[]).filter(w=>nrm(w.host_name)===nrm(q)):[];
   const newWeekly=async()=>{ try{ const id=await db.createWeekly({host_name:q,cohort:"69",nickname:q,name:"",no_id:"",il_coach:"",staff_coach:"",week_start:null,week_end:null,answers:{}}); await onChange(); setWeeklyEditId(id); toast("สร้างรายงานใหม่แล้ว · กรอกได้เลย"); }catch(e){ toast("สร้างไม่สำเร็จ: "+(e.message||e)); } };
   const delWeekly=async(id)=>{ if(!window.confirm("ลบรายงานสัปดาห์นี้?")) return; try{ await db.deleteWeekly(id); onChange(); toast("ลบแล้ว"); }catch(e){ toast("ลบไม่สำเร็จ"); } };
+  const myProgress=q?(progress||[]).filter(w=>nrm(w.host_name)===nrm(q)):[];
+  const newProgress=async()=>{ try{ const prev=myProgress[0]||{}; const id=await db.createProgress({host_name:q, no_id:prev.no_id||"", cohort:prev.cohort||"69", il_coach:prev.il_coach||"", staff_coach:prev.staff_coach||"", nickname:prev.nickname||q, name:prev.name||"", week_label:"", period_start:null, period_end:null, goal_guest:prev.goal_guest!=null?prev.goal_guest:25, goal_reg:prev.goal_reg!=null?prev.goal_reg:12}); await onChange(); setProgressEditId(id); toast("สร้างรายงานผลลัพธ์แล้ว · เลือกช่วงเวลาได้เลย"); }catch(e){ toast("สร้างไม่สำเร็จ: "+(e.message||e)); } };
+  const delProgress=async(id)=>{ if(!window.confirm("ลบรายงานผลลัพธ์นี้?")) return; try{ await db.deleteProgress(id); onChange(); toast("ลบแล้ว"); }catch(e){ toast("ลบไม่สำเร็จ"); } };
   const hostNames=Array.from(new Set(homes.map(h=>h.host_name))).sort();
   const mine=q?homes.filter(h=>h.host_name===q).sort((a,b)=>a.event_date.localeCompare(b.event_date)):[];
   const del=async(h)=>{ if(!window.confirm("ลบงานวันที่ "+h.event_date+" ของ "+h.host_name+"? รายชื่อที่ลงไว้จะถูกลบด้วย")) return;
@@ -1487,7 +1657,7 @@ function HostView({homes, signups, guests, weeklies, db, onChange, toast, onCrea
       {q && mine.length>0 && <div style={{marginTop:16}}><CriteriaPanel s={critStats(homes, q)} /></div>}
       {q && <div style={{marginTop:16}}>
         <div className="panel" style={{padding:"8px 10px",marginBottom:16,display:"flex",gap:6,flexWrap:"wrap"}}>
-          {[{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"}].map(tt=>
+          {[{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"},{id:"progress",label:"รายงานผลลัพธ์"}].map(tt=>
             <button key={tt.id} className={"btn btn-sm"+(hostTab===tt.id?" btn-primary":"")} onClick={()=>setHostTab(tt.id)}>{tt.label}</button>)}
         </div>
         {hostTab==="guest" && <HostGuestTable mine={mine} guests={guests} db={db} onChange={onChange} toast={toast} />}
@@ -1507,6 +1677,21 @@ function HostView({homes, signups, guests, weeklies, db, onChange, toast, onCrea
             </div>
           </div>
           <WeeklySummary list={myWeeklies} onOpen={setWeeklyEditId} />
+        </>}
+        {hostTab==="progress" && <>
+          <div className="panel" style={{padding:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,marginBottom:16}}>
+            <div><div className="eyebrow">รายงานผลลัพธ์ (Progress Results)</div><div className="lead-sub" style={{marginTop:2}}>ของ {q} · มี {myProgress.length} รายงาน · เลือกช่วงเวลาแล้วระบบดึงข้อมูล Guest/ลงทะเบียน/Call Out มาให้</div></div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+              {myProgress.slice().sort((a,b)=>((b.period_end||"")+"").localeCompare((a.period_end||"")+"")).map(w=>(
+                <span className="tagperson" key={w.id} style={{paddingLeft:6}}>
+                  <button className="xbtn" style={{width:22,height:22}} title="เปิด/แก้/พิมพ์" onClick={()=>setProgressEditId(w.id)}><SVG d={I.cal} size={13}/></button>
+                  {w.week_label||(w.period_end?fmtDate(w.period_end).day+" "+fmtDate(w.period_end).mo:"ใหม่")}
+                  <button className="xbtn" style={{width:22,height:22}} title="ลบ" onClick={()=>delProgress(w.id)}><SVG d={I.trash} size={13}/></button>
+                </span>))}
+              <button className="btn btn-primary btn-sm" onClick={newProgress}><SVG d={I.plus} size={15}/>เพิ่มรายงานผลลัพธ์</button>
+            </div>
+          </div>
+          {myProgress.length===0 && <div className="empty-assist">ยังไม่มีรายงาน — กด “เพิ่มรายงานผลลัพธ์” แล้วเลือกช่วงเวลา</div>}
         </>}
       </div>}
       {!q && <div className="empty" style={{marginTop:16}}><div className="big"><SVG d={I.user} size={26}/></div>
@@ -1544,6 +1729,7 @@ function HostView({homes, signups, guests, weeklies, db, onChange, toast, onCrea
       {guestFor && <GuestModal home={guestFor} guests={guests||[]} homes={homes} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
       {editFor && <CreateModal home={editFor} db={db} onChange={onChange} toast={toast} onClose={()=>setEditFor(null)} />}
       {weeklyEditId && (()=>{ const w=(weeklies||[]).find(x=>x.id===weeklyEditId); return w?<WeeklyModal weekly={w} db={db} onChange={onChange} toast={toast} onClose={()=>setWeeklyEditId(null)} />:null; })()}
+      {progressEditId && (()=>{ const w=(progress||[]).find(x=>x.id===progressEditId); return w?<ProgressModal rep={w} homes={homes} guests={guests} db={db} onChange={onChange} toast={toast} onClose={()=>setProgressEditId(null)} />:null; })()}
     </div>
   );
 }
@@ -1965,13 +2151,13 @@ function App(){
   const dataRef=useRef({homes:[],signups:[],guests:[]});
   const [db,setDb]=useState(()=>{ const c=loadCfg(); return withLog(c?makeSupabaseDB(c):makeDemoDB(), ()=>dataRef.current); });
   const [tab,setTab]=useState("board");
-  const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]); const [weeklies,setWeeklies]=useState([]);
+  const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]); const [weeklies,setWeeklies]=useState([]); const [progress,setProgress]=useState([]);
   const [loading,setLoading]=useState(true); const [showCreate,setShowCreate]=useState(false); const [showLog,setShowLog]=useState(false);
   const [focusId,setFocusId]=useState(()=>{ const m=(window.location.hash||"").match(/home=([\w-]+)/); return m?m[1]:null; });
   const focusedRef=useRef(false);
   const [toastMsg,setToastMsg]=useState(""); const toastT=useRef();
   const toast=useCallback((m)=>{ setToastMsg(m); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToastMsg(""),2600); },[]);
-  const refresh=useCallback(async()=>{ try{ const [h,s,g,w]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests(),db.listWeekly()]); setHomes(h); setSignups(s); setGuests(g); setWeeklies(w); dataRef.current={homes:h,signups:s,guests:g}; }
+  const refresh=useCallback(async()=>{ try{ const [h,s,g,w,pg]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests(),db.listWeekly(),db.listProgress()]); setHomes(h); setSignups(s); setGuests(g); setWeeklies(w); setProgress(pg); dataRef.current={homes:h,signups:s,guests:g}; }
     catch(e){ toast("โหลดข้อมูลไม่สำเร็จ: "+(e.message||e)); } setLoading(false); },[db,toast]);
   useEffect(()=>{ setLoading(true); refresh(); const off=db.subscribe(()=>refresh()); return off; },[db,refresh]);
   useEffect(()=>{ const f=()=>refresh(); window.addEventListener("focus",f); const iv=setInterval(refresh,20000);
@@ -2016,7 +2202,7 @@ function App(){
             {tab==="archive" && <ArchiveView homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} />}
             {tab==="dash"    && <DashboardView homes={homes} signups={signups} guests={guests} />}
             {tab==="members" && <CriteriaView homes={homes} signups={signups} />}
-            {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} weeklies={weeklies} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
+            {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} weeklies={weeklies} progress={progress} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
           </>}
       {showCreate && <CreateModal db={db} onChange={refresh} toast={toast} onClose={()=>setShowCreate(false)} />}
       {showLog && <LogModal db={db} onClose={()=>setShowLog(false)} />}
