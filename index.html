@@ -183,6 +183,12 @@
 
   .hostgrid{display:grid;grid-template-columns:1fr;gap:16px}
   .hostcard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .hostcard.gala{border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(120deg,#f7b733,#fc4a1a,#f15bb5,#9b5de5,#00bbf9) border-box;box-shadow:0 10px 34px rgba(155,93,229,.28);position:relative}
+  .hostcard.gala::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 12% 0%,rgba(247,183,51,.16),transparent 42%),radial-gradient(circle at 92% 8%,rgba(155,93,229,.16),transparent 42%)}
+  .gala-banner{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;color:#fff;background:linear-gradient(120deg,#9b5de5,#f15bb5,#fc4a1a,#f7b733,#9b5de5);background-size:220% 100%;animation:galaShine 7s linear infinite;padding:8px 14px;font-size:13.5px;letter-spacing:.3px;text-shadow:0 1px 2px rgba(0,0,0,.22)}
+  .gala-stars{letter-spacing:1px;animation:galaTwinkle 1.8s ease-in-out infinite}
+  @keyframes galaShine{0%{background-position:0% 50%}100%{background-position:220% 50%}}
+  @keyframes galaTwinkle{0%,100%{opacity:1}50%{opacity:.45}}
   .hostcard-h{display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .hc-date{flex:0 0 auto;text-align:center;background:var(--green-tint);border-radius:12px;padding:8px 12px;min-width:64px}
   .hc-date .d{font-family:"Bai Jamjuree";font-weight:700;font-size:22px;line-height:1;color:var(--green-deep)}
@@ -533,6 +539,11 @@ const isPast=(s)=> s<todayStr();
 /* งานที่ "วันที่ถึงแล้ว" (วันนี้หรือก่อนหน้า) — ใช้กรองสถิติ Guest/ลงทะเบียน ไม่ให้นับงานในอนาคต */
 const arrived=(h)=> !!h && !!h.event_date && h.event_date<=todayStr();
 const isArchived=(h)=> !!h.completed || isPast(h.event_date);
+/* ผู้จัดส่วนกลาง (Landmark) — งานเหล่านี้ขึ้นในมุมมอง Host ของทุกคน */
+const CENTRAL_HOST="Landmark";
+const isCentral=(h)=> ((h&&h.host_name)||"").trim().toLowerCase()===CENTRAL_HOST.toLowerCase();
+/* การ์ดพิเศษ: Evening Session แข่งขัน "ขึ้นดาว" วันที่ 24 มิ.ย. */
+const isGala=(h)=> !!h && (h.kind||"")==="Evening Session" && h.event_date==="2026-06-24";
 function daysUntil(s){ const a=new Date(s+"T00:00:00"), t=new Date(todayStr()+"T00:00:00"); return Math.round((a-t)/86400000); }
 function urgentLabel(s){ const d=daysUntil(s); return d===0?"วันนี้":(d===1?"พรุ่งนี้":"อีก "+d+" วัน"); }
 function fmtDate(s){ const d=new Date(s+"T00:00:00");
@@ -1655,6 +1666,8 @@ function HostView({homes, signups, guests, weeklies, progress, db, onChange, toa
   const delProgress=async(id)=>{ if(!window.confirm("ลบรายงานผลลัพธ์นี้?")) return; try{ await db.deleteProgress(id); onChange(); toast("ลบแล้ว"); }catch(e){ toast("ลบไม่สำเร็จ"); } };
   const hostNames=Array.from(new Set(homes.map(h=>h.host_name))).sort();
   const mine=q?homes.filter(h=>h.host_name===q).sort((a,b)=>a.event_date.localeCompare(b.event_date)):[];
+  /* การ์ดที่แสดงในมุมมอง Host = งานของตัวเอง + งานส่วนกลาง (Landmark) ของทุกคน */
+  const cards=q?[...mine, ...homes.filter(h=>isCentral(h)&&h.host_name!==q)].sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||"")):[];
   const del=async(h)=>{ if(!window.confirm("ลบงานวันที่ "+h.event_date+" ของ "+h.host_name+"? รายชื่อที่ลงไว้จะถูกลบด้วย")) return;
     try{ await db.deleteHome(h.id); toast("ลบงานแล้ว"); onChange(); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
   const reopen=async(h)=>{ try{ await db.updateHome(h.id,{completed:false}); toast("เปิดงานกลับมาแล้ว"); onChange(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); } };
@@ -1711,23 +1724,24 @@ function HostView({homes, signups, guests, weeklies, progress, db, onChange, toa
       </div>}
       {!q && <div className="empty" style={{marginTop:16}}><div className="big"><SVG d={I.user} size={26}/></div>
         <h3>เลือกชื่อผู้จัด Home ด้านบน</h3><p>ระบบจะแสดงทุกงานของคนนั้น ทั้งที่กำลังจะถึงและที่ผ่านมา พร้อมรายชื่อคนที่มาช่วย</p></div>}
-      {q && mine.length===0 && <div className="empty" style={{marginTop:16}}><h3>ยังไม่มีงานของ “{q}”</h3>
+      {q && cards.length===0 && <div className="empty" style={{marginTop:16}}><h3>ยังไม่มีงานของ “{q}”</h3>
         <p>กดสร้างงาน Home เพื่อเปิดรับ Assist ได้เลย</p><button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงาน</button></div>}
-      {q && mine.length>0 && <div className="panel" style={{padding:"8px 10px",marginTop:16,display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+      {q && cards.length>0 && <div className="panel" style={{padding:"8px 10px",marginTop:16,display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
         <span className="lead-sub" style={{marginRight:4,display:"flex",alignItems:"center",gap:6}}><SVG d={I.filter||I.search} size={14}/>กรองประเภทการ์ด:</span>
-        {[{k:"",label:"ทั้งหมด"}].concat(KINDS.map(k=>({k,label:k}))).map(o=>{ const c=o.k?mine.filter(h=>(h.kind||"Home")===o.k).length:mine.length;
+        {[{k:"",label:"ทั้งหมด"}].concat(KINDS.map(k=>({k,label:k}))).map(o=>{ const c=o.k?cards.filter(h=>(h.kind||"Home")===o.k).length:cards.length;
           return <button key={o.k||"all"} className={"btn btn-sm"+(cardKind===o.k?" btn-primary":"")} onClick={()=>setCardKind(o.k)} disabled={o.k!==""&&c===0}>{o.label} ({c})</button>; })}
       </div>}
-      {q && mine.length>0 && <div className="hostgrid" style={{marginTop:16}}>
-        {(cardKind?mine.filter(h=>(h.kind||"Home")===cardKind):mine).map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo}=fmtDate(h.event_date); const isWin=(h.kind||"Home")==="Home"&&arrived(h)&&isSuccessHome(h);
+      {q && cards.length>0 && <div className="hostgrid" style={{marginTop:16}}>
+        {(cardKind?cards.filter(h=>(h.kind||"Home")===cardKind):cards).map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo}=fmtDate(h.event_date); const isWin=(h.kind||"Home")==="Home"&&arrived(h)&&isSuccessHome(h); const gala=isGala(h); const central=isCentral(h)&&h.host_name!==q;
           return (
-            <div className="hostcard" key={h.id} style={isWin?{borderColor:"var(--green)",boxShadow:"0 0 0 2px var(--green-tint,#d8f3e3) inset"}:null}>
+            <div className={"hostcard"+(gala?" gala":"")} key={h.id} style={gala?null:(isWin?{borderColor:"var(--green)",boxShadow:"0 0 0 2px var(--green-tint,#d8f3e3) inset"}:null)}>
+              {gala && <div className="gala-banner"><span className="gala-stars">⭐⭐⭐</span>🎉 EVENT แข่งขัน · ขึ้นดาว · เฉลิมฉลอง 🏆<span className="gala-stars">⭐⭐⭐</span></div>}
               <div className="hostcard-h">
                 <div className="hc-date"><div className="d">{day}</div><div className="mo">{mo}</div></div>
-                <div className="hc-main"><h4>{isWin && <span title="Home สำเร็จ!" style={{marginRight:5,fontSize:18}}>🏆</span>}{(()=>{const k=h.kind||"Home";const m=KIND_META[k]||KIND_META.Home;return <span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:700,color:m.fg,background:m.bg,border:"1px solid "+m.fg+"40",borderRadius:6,padding:"1px 8px",marginRight:7,verticalAlign:"middle"}}><SVG d={m.icon} size={12}/>{k}</span>;})()}{h.title||h.host_name}
+                <div className="hc-main"><h4>{isWin && <span title="Home สำเร็จ!" style={{marginRight:5,fontSize:18}}>🏆</span>}{(()=>{const k=h.kind||"Home";const m=KIND_META[k]||KIND_META.Home;return <span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:700,color:m.fg,background:m.bg,border:"1px solid "+m.fg+"40",borderRadius:6,padding:"1px 8px",marginRight:7,verticalAlign:"middle"}}><SVG d={m.icon} size={12}/>{k}</span>;})()}{central && <span title="งานส่วนกลางจัดโดย Landmark" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:800,color:"#6b3fa0",background:"linear-gradient(120deg,#efe6ff,#fff)",border:"1px solid #6b3fa055",borderRadius:6,padding:"1px 8px",marginRight:7,verticalAlign:"middle"}}>★ ส่วนกลาง</span>}{h.title||h.host_name}
                   {h.completed && <span style={{fontSize:12,color:"var(--green-deep)",fontWeight:600}}> · จบแล้ว{resultText(h)?" ("+resultText(h)+")":""}</span>}
                   {!h.completed && isPast(h.event_date) && <span style={{fontSize:12,color:"var(--muted)",fontWeight:500}}> · เลยวันแล้ว</span>}</h4>
-                  <div className="sub">{h.host_group?"กลุ่ม "+h.host_group+" · ":""}{h.time_slot||""} · {h.channel||""}{h.address?" · "+h.address:""}</div></div>
+                  <div className="sub">{central?"โดย "+(h.host_name||"Landmark")+" · ":""}{h.host_group?"กลุ่ม "+h.host_group+" · ":""}{h.time_slot||""} · {h.channel||""}{h.address?" · "+h.address:""}</div></div>
                 <div className="hc-count"><div className="n">{list.length}/{h.assists_needed==null?9:h.assists_needed}</div><div className="l">Assist</div></div>
               </div>
               <div className="hostcard-b">
