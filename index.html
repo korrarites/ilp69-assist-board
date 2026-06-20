@@ -1197,8 +1197,8 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
 }
 
 /* ตารางสรุปแขกในมุมมอง Host — รวมแขกจากทุกการ์ด พร้อมแหล่งที่มา (HI/CI/ES) */
-function HostGuestTable({mine, guests, db, onChange, toast}){
-  const [fInt,setFInt]=useState(""); const [fReg,setFReg]=useState(""); const [fSrc,setFSrc]=useState(""); const [fAtt,setFAtt]=useState(""); const [q,setQ]=useState("");
+function HostGuestTable({mine, guests, db, onChange, toast, onOpenHome}){
+  const [fInt,setFInt]=useState(""); const [fReg,setFReg]=useState(""); const [fSrc,setFSrc]=useState(""); const [fAtt,setFAtt]=useState(""); const [q,setQ]=useState(""); const [sort,setSort]=useState({key:"date",dir:"desc"});
   const ids=new Set(mine.map(h=>h.id)); const homeById={}; mine.forEach(h=>homeById[h.id]=h);
   const all=(guests||[]).filter(g=>ids.has(g.home_id)).map(g=>({g,home:homeById[g.home_id]}))
     .sort((a,b)=>((b.home.event_date||"").localeCompare(a.home.event_date||""))||((a.g.created_at||"").localeCompare(b.g.created_at||"")));
@@ -1212,6 +1212,18 @@ function HostGuestTable({mine, guests, db, onChange, toast}){
     return true;
   });
   const active=fInt||fReg||fSrc||fAtt||q;
+  const sortVal=(r)=>{ switch(sort.key){
+    case "name": return (r.g.guest_name||r.g.nickname||"").toLowerCase();
+    case "interested": return r.g.interested==="สนใจ"?2:(r.g.interested==="ไม่สนใจ"?1:0);
+    case "whats_so": return (r.g.whats_so||"").toLowerCase();
+    case "attended": return r.g.attended?1:0;
+    case "registered": return r.g.registered?1:0;
+    case "src": return r.home.kind||"Home";
+    default: return r.home.event_date||""; } };
+  const sorted=rows.slice().sort((a,b)=>{ const av=sortVal(a),bv=sortVal(b); let c=av<bv?-1:av>bv?1:0; if(c===0) c=(a.home.event_date||"").localeCompare(b.home.event_date||""); return sort.dir==="asc"?c:-c; });
+  const onSort=(k)=>setSort(s=>s.key===k?{key:k,dir:s.dir==="asc"?"desc":"asc"}:{key:k,dir:k==="name"||k==="whats_so"||k==="src"?"asc":"desc"});
+  const arrow=(k)=> sort.key===k?(sort.dir==="asc"?" ▲":" ▼"):"";
+  const Th=({k,label,style})=> <th onClick={()=>onSort(k)} style={{cursor:"pointer",userSelect:"none",whiteSpace:"nowrap",...(style||{})}} title="คลิกเพื่อจัดเรียง">{label}{arrow(k)}</th>;
   const reg=rows.filter(r=>r.g.registered).length, came=rows.filter(r=>r.g.attended).length;
   const toggleReg=async(g)=>{ const v=!g.registered;
     try{ await db.updateGuest(g.id,{registered:v});
@@ -1250,13 +1262,13 @@ function HostGuestTable({mine, guests, db, onChange, toast}){
        rows.length===0 ? <div className="empty-assist">ไม่พบแขกตามตัวกรอง</div> :
         <div className="gwrap" style={{maxHeight:"none"}}>
           <table className="sumtbl">
-            <thead><tr><th>#</th><th>ชื่อแขก</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th>มา</th><th>ลงทะเบียน</th><th>แหล่งที่มา</th><th>วันที่</th></tr></thead>
+            <thead><tr><th>#</th><Th k="name" label="ชื่อแขก" /><Th k="interested" label="สนใจ/ไม่สนใจ" /><Th k="whats_so" label="What's so" /><Th k="attended" label="มา" /><Th k="registered" label="ลงทะเบียน" /><Th k="src" label="แหล่งที่มา" /><Th k="date" label="วันที่" /></tr></thead>
             <tbody>
-              {rows.map((r,i)=>{ const {day,mo}=fmtDate(r.home.event_date); const k=r.home.kind||"Home"; const isCall=k==="Call Out";
+              {sorted.map((r,i)=>{ const {day,mo}=fmtDate(r.home.event_date); const k=r.home.kind||"Home"; const isCall=k==="Call Out";
                 return (
                   <tr key={r.g.id} className={r.g.attended?"reg":""}>
                     <td style={{color:"var(--muted)"}}>{i+1}</td>
-                    <td style={{fontWeight:600}}>{r.g.guest_name||r.g.nickname||"—"}</td>
+                    <td><button className="linklike" title="คลิกเพื่อแก้ไขรายชื่อในการ์ดนี้" onClick={()=>onOpenHome&&onOpenHome(r.home)} style={{fontWeight:600,color:"var(--brand,#1f7a4d)",background:"none",border:"none",padding:0,cursor:"pointer",textDecoration:"underline",textUnderlineOffset:2,font:"inherit"}}>{r.g.guest_name||r.g.nickname||"—"}</button></td>
                     <td>{r.g.interested?<span className={"ipill "+(r.g.interested==="สนใจ"?"yes":"no")}>{r.g.interested}</span>:<span style={{color:"var(--muted)"}}>—</span>}</td>
                     <td style={{maxWidth:240}}>{r.g.whats_so||<span style={{color:"var(--muted)"}}>—</span>}</td>
                     <td>{isCall?<span style={{color:"var(--muted)"}}>—</span>:<label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}><input type="checkbox" checked={!!r.g.attended} onChange={()=>toggleAtt(r.g)} />{r.g.attended?"✓":""}</label>}</td>
@@ -1634,7 +1646,7 @@ function ProgressModal({rep, homes, guests, db, onChange, toast, onClose}){
   );
 }
 function HostView({homes, signups, guests, weeklies, progress, db, onChange, toast, onCreate}){
-  const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null); const [weeklyEditId,setWeeklyEditId]=useState(null); const [progressEditId,setProgressEditId]=useState(null); const [hostTab,setHostTab]=useState("guest");
+  const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null); const [weeklyEditId,setWeeklyEditId]=useState(null); const [progressEditId,setProgressEditId]=useState(null); const [hostTab,setHostTab]=useState("guest"); const [cardKind,setCardKind]=useState("");
   const myWeeklies=q?(weeklies||[]).filter(w=>nrm(w.host_name)===nrm(q)):[];
   const newWeekly=async()=>{ try{ const id=await db.createWeekly({host_name:q,cohort:"69",nickname:q,name:"",no_id:"",il_coach:"",staff_coach:"",week_start:null,week_end:null,answers:{}}); await onChange(); setWeeklyEditId(id); toast("สร้างรายงานใหม่แล้ว · กรอกได้เลย"); }catch(e){ toast("สร้างไม่สำเร็จ: "+(e.message||e)); } };
   const delWeekly=async(id)=>{ if(!window.confirm("ลบรายงานสัปดาห์นี้?")) return; try{ await db.deleteWeekly(id); onChange(); toast("ลบแล้ว"); }catch(e){ toast("ลบไม่สำเร็จ"); } };
@@ -1663,7 +1675,7 @@ function HostView({homes, signups, guests, weeklies, progress, db, onChange, toa
           {[{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"},{id:"progress",label:"รายงานผลลัพธ์"}].map(tt=>
             <button key={tt.id} className={"btn btn-sm"+(hostTab===tt.id?" btn-primary":"")} onClick={()=>setHostTab(tt.id)}>{tt.label}</button>)}
         </div>
-        {hostTab==="guest" && <HostGuestTable mine={mine} guests={guests} db={db} onChange={onChange} toast={toast} />}
+        {hostTab==="guest" && <HostGuestTable mine={mine} guests={guests} db={db} onChange={onChange} toast={toast} onOpenHome={setGuestFor} />}
         {hostTab==="activity" && <HostActivityTable mine={mine} signups={signups} />}
         {hostTab==="reflect" && <HostReflectTable mine={mine} />}
         {hostTab==="weekly" && <>
@@ -1701,13 +1713,18 @@ function HostView({homes, signups, guests, weeklies, progress, db, onChange, toa
         <h3>เลือกชื่อผู้จัด Home ด้านบน</h3><p>ระบบจะแสดงทุกงานของคนนั้น ทั้งที่กำลังจะถึงและที่ผ่านมา พร้อมรายชื่อคนที่มาช่วย</p></div>}
       {q && mine.length===0 && <div className="empty" style={{marginTop:16}}><h3>ยังไม่มีงานของ “{q}”</h3>
         <p>กดสร้างงาน Home เพื่อเปิดรับ Assist ได้เลย</p><button className="btn btn-primary" onClick={onCreate}><SVG d={I.plus} size={16}/>สร้างงาน</button></div>}
+      {q && mine.length>0 && <div className="panel" style={{padding:"8px 10px",marginTop:16,display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+        <span className="lead-sub" style={{marginRight:4,display:"flex",alignItems:"center",gap:6}}><SVG d={I.filter||I.search} size={14}/>กรองประเภทการ์ด:</span>
+        {[{k:"",label:"ทั้งหมด"}].concat(KINDS.map(k=>({k,label:k}))).map(o=>{ const c=o.k?mine.filter(h=>(h.kind||"Home")===o.k).length:mine.length;
+          return <button key={o.k||"all"} className={"btn btn-sm"+(cardKind===o.k?" btn-primary":"")} onClick={()=>setCardKind(o.k)} disabled={o.k!==""&&c===0}>{o.label} ({c})</button>; })}
+      </div>}
       {q && mine.length>0 && <div className="hostgrid" style={{marginTop:16}}>
-        {mine.map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo}=fmtDate(h.event_date);
+        {(cardKind?mine.filter(h=>(h.kind||"Home")===cardKind):mine).map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo}=fmtDate(h.event_date); const isWin=(h.kind||"Home")==="Home"&&arrived(h)&&isSuccessHome(h);
           return (
-            <div className="hostcard" key={h.id}>
+            <div className="hostcard" key={h.id} style={isWin?{borderColor:"var(--green)",boxShadow:"0 0 0 2px var(--green-tint,#d8f3e3) inset"}:null}>
               <div className="hostcard-h">
                 <div className="hc-date"><div className="d">{day}</div><div className="mo">{mo}</div></div>
-                <div className="hc-main"><h4>{h.title||h.host_name}
+                <div className="hc-main"><h4>{isWin && <span title="Home สำเร็จ!" style={{marginRight:5,fontSize:18}}>🏆</span>}{(()=>{const k=h.kind||"Home";const m=KIND_META[k]||KIND_META.Home;return <span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:700,color:m.fg,background:m.bg,border:"1px solid "+m.fg+"40",borderRadius:6,padding:"1px 8px",marginRight:7,verticalAlign:"middle"}}><SVG d={m.icon} size={12}/>{k}</span>;})()}{h.title||h.host_name}
                   {h.completed && <span style={{fontSize:12,color:"var(--green-deep)",fontWeight:600}}> · จบแล้ว{resultText(h)?" ("+resultText(h)+")":""}</span>}
                   {!h.completed && isPast(h.event_date) && <span style={{fontSize:12,color:"var(--muted)",fontWeight:500}}> · เลยวันแล้ว</span>}</h4>
                   <div className="sub">{h.host_group?"กลุ่ม "+h.host_group+" · ":""}{h.time_slot||""} · {h.channel||""}{h.address?" · "+h.address:""}</div></div>
