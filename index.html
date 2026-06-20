@@ -183,8 +183,8 @@
 
   .hostgrid{display:grid;grid-template-columns:1fr;gap:16px}
   .hostcard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
-  .hostcard.gala{border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(120deg,#f7b733,#fc4a1a,#f15bb5,#9b5de5,#00bbf9) border-box;box-shadow:0 10px 34px rgba(155,93,229,.28);position:relative}
-  .hostcard.gala::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 12% 0%,rgba(247,183,51,.16),transparent 42%),radial-gradient(circle at 92% 8%,rgba(155,93,229,.16),transparent 42%)}
+  .hostcard.gala,.card.gala{border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(120deg,#f7b733,#fc4a1a,#f15bb5,#9b5de5,#00bbf9) border-box;box-shadow:0 10px 34px rgba(155,93,229,.28);position:relative}
+  .hostcard.gala::after,.card.gala::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 12% 0%,rgba(247,183,51,.16),transparent 42%),radial-gradient(circle at 92% 8%,rgba(155,93,229,.16),transparent 42%)}
   .gala-banner{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;color:#fff;background:linear-gradient(120deg,#9b5de5,#f15bb5,#fc4a1a,#f7b733,#9b5de5);background-size:220% 100%;animation:galaShine 7s linear infinite;padding:8px 14px;font-size:13.5px;letter-spacing:.3px;text-shadow:0 1px 2px rgba(0,0,0,.22)}
   .gala-stars{letter-spacing:1px;animation:galaTwinkle 1.8s ease-in-out infinite}
   @keyframes galaShine{0%{background-position:0% 50%}100%{background-position:220% 50%}}
@@ -696,12 +696,14 @@ function EventCard({home, signups, guests, homes, db, onChange, toast}){
   const filled=list.length, isFull=filled>=need;
   const {day,mo,dow}=fmtDate(home.event_date);
   const du=daysUntil(home.event_date), urgent=!past && du>=0 && du<=7;
+  const gala=isGala(home);
   const slots=[]; for(let i=0;i<Math.max(need,filled);i++) slots.push(<span key={i} className={"slot "+(i<filled?(i<need?"on":"wait"):"")}/>);
   const add=async(p)=>{ try{ await db.createSignup({home_id:home.id,assist_name:p.assist_name,cohort:null,contact:null});
     setOpen(false); toast("ลงชื่อเรียบร้อย ✦ ขอบคุณที่มาช่วยกัน"); onChange(); }catch(e){ toast("บันทึกไม่สำเร็จ: "+(e.message||e)); } };
   const remove=async(id)=>{ try{ await db.deleteSignup(id); toast("ถอนชื่อแล้ว"); onChange(); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
   return (
-    <div className={"card"+(past?" past":"")+(urgent?" urgent-card":"")} id={"home-"+home.id}>
+    <div className={"card"+(past?" past":"")+(urgent?" urgent-card":"")+(gala?" gala":"")} id={"home-"+home.id}>
+      {gala && <div className="gala-banner"><span className="gala-stars">⭐⭐⭐</span>🎉 EVENT แข่งขัน · ขึ้นดาว · เฉลิมฉลอง 🏆<span className="gala-stars">⭐⭐⭐</span></div>}
       {urgent && <div className="urgent"><SVG d={I.bolt} size={14}/>ต้องการด่วน · {urgentLabel(home.event_date)}</div>}
       <div className="card-top">
         <span className={"ribbon "+(past?"done":(isFull?"full":"open"))}>{past?"จบแล้ว":(noAssist?"ไม่ต้องการผู้ช่วย":(isFull?"ครบแล้ว":"ว่าง "+(need-filled)))}</span>
@@ -1208,10 +1210,16 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
 }
 
 /* ตารางสรุปแขกในมุมมอง Host — รวมแขกจากทุกการ์ด พร้อมแหล่งที่มา (HI/CI/ES) */
-function HostGuestTable({mine, guests, db, onChange, toast, onOpenHome}){
+function HostGuestTable({mine, central, hostName, guests, db, onChange, toast, onOpenHome}){
   const [fInt,setFInt]=useState(""); const [fReg,setFReg]=useState(""); const [fSrc,setFSrc]=useState(""); const [fAtt,setFAtt]=useState(""); const [q,setQ]=useState(""); const [sort,setSort]=useState({key:"date",dir:"desc"});
-  const ids=new Set(mine.map(h=>h.id)); const homeById={}; mine.forEach(h=>homeById[h.id]=h);
-  const all=(guests||[]).filter(g=>ids.has(g.home_id)).map(g=>({g,home:homeById[g.home_id]}))
+  const ids=new Set(mine.map(h=>h.id)); const homeById={}; mine.forEach(h=>homeById[h.id]=h); (central||[]).forEach(h=>homeById[h.id]=h);
+  const hn=(hostName||"").trim().toLowerCase();
+  /* แสดงแขก: จากอีเวนต์ของตัวเอง + แขกที่ตัวเองเป็นผู้เชิญ ในงานส่วนกลาง (Landmark) */
+  const all=(guests||[]).filter(g=>{ const h=homeById[g.home_id]; if(!h) return false;
+      if(ids.has(g.home_id)) return true;
+      if(isCentral(h)&&hn&&(g.inviter||"").trim().toLowerCase()===hn) return true;
+      return false; })
+    .map(g=>({g,home:homeById[g.home_id]}))
     .sort((a,b)=>((b.home.event_date||"").localeCompare(a.home.event_date||""))||((a.g.created_at||"").localeCompare(b.g.created_at||"")));
   const qq=q.trim().toLowerCase();
   const rows=all.filter(r=>{
@@ -1284,7 +1292,7 @@ function HostGuestTable({mine, guests, db, onChange, toast, onOpenHome}){
                     <td style={{maxWidth:240}}>{r.g.whats_so||<span style={{color:"var(--muted)"}}>—</span>}</td>
                     <td>{isCall?<span style={{color:"var(--muted)"}}>—</span>:<label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}><input type="checkbox" checked={!!r.g.attended} onChange={()=>toggleAtt(r.g)} />{r.g.attended?"✓":""}</label>}</td>
                     <td><label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}><input type="checkbox" checked={!!r.g.registered} onChange={()=>toggleReg(r.g)} />{r.g.registered?"✓":""}</label></td>
-                    <td><span className="src" style={{color:(KIND_META[k]||KIND_META.Home).fg}}>{SRC_LABEL[k]||k}</span></td>
+                    <td><span className="src" style={{color:(KIND_META[k]||KIND_META.Home).fg}}>{SRC_LABEL[k]||k}</span>{isCentral(r.home)&&<span title="งานส่วนกลาง Landmark (คุณเป็นผู้เชิญ)" style={{marginLeft:5,color:"#6b3fa0",fontWeight:800}}>★</span>}</td>
                     <td style={{whiteSpace:"nowrap"}}>{day} {mo}</td>
                   </tr>); })}
             </tbody>
@@ -1688,7 +1696,7 @@ function HostView({homes, signups, guests, weeklies, progress, db, onChange, toa
           {[{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"},{id:"progress",label:"รายงานผลลัพธ์"}].map(tt=>
             <button key={tt.id} className={"btn btn-sm"+(hostTab===tt.id?" btn-primary":"")} onClick={()=>setHostTab(tt.id)}>{tt.label}</button>)}
         </div>
-        {hostTab==="guest" && <HostGuestTable mine={mine} guests={guests} db={db} onChange={onChange} toast={toast} onOpenHome={setGuestFor} />}
+        {hostTab==="guest" && <HostGuestTable mine={mine} central={homes.filter(h=>isCentral(h)&&h.host_name!==q)} hostName={q} guests={guests} db={db} onChange={onChange} toast={toast} onOpenHome={setGuestFor} />}
         {hostTab==="activity" && <HostActivityTable mine={mine} signups={signups} />}
         {hostTab==="reflect" && <HostReflectTable mine={mine} />}
         {hostTab==="weekly" && <>
