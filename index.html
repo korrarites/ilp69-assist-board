@@ -530,6 +530,8 @@ function withLog(db, ctx){
 /* ===== helpers ===== */
 const todayStr=()=>{ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 const isPast=(s)=> s<todayStr();
+/* งานที่ "วันที่ถึงแล้ว" (วันนี้หรือก่อนหน้า) — ใช้กรองสถิติ Guest/ลงทะเบียน ไม่ให้นับงานในอนาคต */
+const arrived=(h)=> !!h && !!h.event_date && h.event_date<=todayStr();
 const isArchived=(h)=> !!h.completed || isPast(h.event_date);
 function daysUntil(s){ const a=new Date(s+"T00:00:00"), t=new Date(todayStr()+"T00:00:00"); return Math.round((a-t)/86400000); }
 function urgentLabel(s){ const d=daysUntil(s); return d===0?"วันนี้":(d===1?"พรุ่งนี้":"อีก "+d+" วัน"); }
@@ -1502,11 +1504,10 @@ function progressData(homes, guests, host, ps, pe){
   const callOuts=hostHomes.filter(h=>(h.kind||"Home")==="Call Out").sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||""));
   const callRows=callOuts.map((h,i)=>({no:(h.co_session!=null&&h.co_session!=="")?h.co_session:"",date:h.event_date,time:h.time_slot})).filter(r=>inP(r.date));
   const assistCount=callOuts.length;
-  const totalGuests=myGuests.filter(g=>{const h=homeById[g.home_id];return g.attended&&(h.kind||"Home")!=="Call Out";}).length;
-  const totalReg=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h);}).length;
-  const today=new Date(); const todayStr=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+  const totalGuests=myGuests.filter(g=>{const h=homeById[g.home_id];return g.attended&&(h.kind||"Home")!=="Call Out"&&arrived(h);}).length;
+  const totalReg=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h)&&arrived(h);}).length;
   const homeIntroSuccess=hostHomes.filter(h=>(h.kind||"Home")==="Home").filter(h=>{
-    if(!h.event_date||h.event_date>todayStr) return false; /* นับเฉพาะที่เกิดขึ้นแล้ว ไม่นับอนาคต */
+    if(!arrived(h)) return false; /* นับเฉพาะที่เกิดขึ้นแล้ว ไม่นับอนาคต */
     const att=myGuests.filter(g=>g.home_id===h.id&&g.attended).length; return Math.max(att,h.result_g||0)>=MIN_GUEST; }).length;
   return {guestRows, regRows, callRows, assistCount, totalGuests, totalReg, homeIntroSuccess};
 }
@@ -1743,11 +1744,12 @@ const CRIT_ORG=3, CRIT_GUEST=25, CRIT_REG=12, MIN_GUEST=4;
 const isSuccessHome=(h)=> (h.result_g||0)>=MIN_GUEST && (h.result_r||0)*4>=(h.result_g||0);
 function critStats(homes, hostName){
   const key=nrm(hostName); const mine=homes.filter(h=>nrm(h.host_name)===key);
+  const arr=mine.filter(arrived); /* นับ Guest/ลงทะเบียน/สำเร็จ เฉพาะงานที่ถึงวันแล้ว */
   const cnt=k=>mine.filter(h=>(h.kind||"Home")===k).length;
-  const sucCnt=k=>mine.filter(h=>(h.kind||"Home")===k&&isSuccessHome(h)).length;
-  const guest=mine.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0);
-  const reg=mine.reduce((n,h)=>n+(h.result_r||0),0);
-  const orgSuccess=mine.filter(h=>(h.kind||"Home")==="Home"&&isSuccessHome(h)).length;
+  const sucCnt=k=>arr.filter(h=>(h.kind||"Home")===k&&isSuccessHome(h)).length;
+  const guest=arr.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0);
+  const reg=arr.reduce((n,h)=>n+(h.result_r||0),0);
+  const orgSuccess=arr.filter(h=>(h.kind||"Home")==="Home"&&isSuccessHome(h)).length;
   const c1=orgSuccess>=CRIT_ORG, c2=guest>=CRIT_GUEST, c3=reg>=CRIT_REG;
   return { name:hostName, total:mine.length, home:cnt("Home"), homeSuccess:sucCnt("Home"),
     center:cnt("Center Intro"), evening:cnt("Evening Session"), call:cnt("Call Out"),
@@ -1815,9 +1817,9 @@ function DashboardView({homes, signups}){
   /* ---- รวมสถิติฝั่งผู้จัด Home ---- */
   const hostMap={};
   homes.forEach(h=>{ const k=nrm(h.host_name); const o=hostMap[k]||(hostMap[k]={name:k,homes:0,homeOnly:0,homeSuc:0,done:0,g:0,r:0,list:[]});
-    o.homes++; o.list.push(h);
-    if((h.kind||"Home")==="Home"){ o.homeOnly++; if(isSuccessHome(h)) o.homeSuc++; }
-    o.g+=((h.kind||"Home")==="Call Out"?0:(h.result_g||0)); o.r+=(h.result_r||0);
+    o.homes++; o.list.push(h); const ar=arrived(h);
+    if((h.kind||"Home")==="Home"){ o.homeOnly++; if(ar&&isSuccessHome(h)) o.homeSuc++; }
+    o.g+=(ar&&(h.kind||"Home")!=="Call Out"?(h.result_g||0):0); o.r+=(ar?(h.result_r||0):0);
     if(h.completed) o.done++; });
   const hostRows=Object.values(hostMap);
   /* ---- รวมสถิติฝั่งผู้ช่วย Assist ---- */
