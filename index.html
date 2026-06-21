@@ -551,8 +551,8 @@ const isArchived=(h)=> !!h.completed || isPast(h.event_date);
 /* ผู้จัดส่วนกลาง (Landmark) — งานเหล่านี้ขึ้นในมุมมอง Host ของทุกคน */
 const CENTRAL_HOST="Landmark";
 const isCentral=(h)=> ((h&&h.host_name)||"").trim().toLowerCase()===CENTRAL_HOST.toLowerCase();
-/* การ์ดพิเศษ: Evening Session แข่งขัน "ขึ้นดาว" วันที่ 24 มิ.ย. */
-const isGala=(h)=> !!h && (h.kind||"")==="Evening Session" && h.event_date==="2026-06-24";
+/* การ์ดพิเศษ: Event แข่งขัน "ขึ้นดาว" วันที่ 24 มิ.ย. ที่จัดโดย Landmark (ส่วนกลาง) เท่านั้น */
+const isGala=(h)=> !!h && h.event_date==="2026-06-24" && isCentral(h);
 function daysUntil(s){ const a=new Date(s+"T00:00:00"), t=new Date(todayStr()+"T00:00:00"); return Math.round((a-t)/86400000); }
 function urgentLabel(s){ const d=daysUntil(s); return d===0?"วันนี้":(d===1?"พรุ่งนี้":"อีก "+d+" วัน"); }
 function fmtDate(s){ const d=new Date(s+"T00:00:00");
@@ -712,7 +712,7 @@ function EventCard({home, signups, guests, homes, db, onChange, toast}){
   const remove=async(id)=>{ try{ await db.deleteSignup(id); toast("ถอนชื่อแล้ว"); onChange(); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
   return (
     <div className={"card"+(past?" past":"")+(urgent?" urgent-card":"")+(gala?" gala":"")} id={"home-"+home.id}>
-      {gala && <div className="gala-banner"><span className="gala-stars">⭐⭐⭐</span>🎉 EVENT แข่งขัน · ขึ้นดาว · เฉลิมฉลอง 🏆<span className="gala-stars">⭐⭐⭐</span></div>}
+      {gala && <div className="gala-banner">📌<span className="gala-stars">⭐</span>🎉 EVENT แข่งขัน · ขึ้นดาว · เฉลิมฉลอง 🏆<span className="gala-stars">⭐</span></div>}
       {urgent && <div className="urgent"><SVG d={I.bolt} size={14}/>ต้องการด่วน · {urgentLabel(home.event_date)}</div>}
       <div className="card-top">
         <span className={"ribbon "+(past?"done":(isFull?"full":"open"))}>{past?"จบแล้ว":(noAssist?"ไม่ต้องการผู้ช่วย":(isFull?"ครบแล้ว":"ว่าง "+(need-filled)))}</span>
@@ -1171,7 +1171,7 @@ function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
                 <h3>ไม่พบงานตามตัวกรอง</h3><p>ลองเปลี่ยนเงื่อนไข หรือกดล้างตัวกรองเพื่อดูทุกงาน</p>
                 <button className="btn" onClick={clear}><SVG d={I.x} size={15}/>ล้างตัวกรอง</button></div>
             : <div className="deck">
-                {filtered.map(h=><EventCard key={h.id} home={h} signups={signups} guests={guests} homes={homes} db={db} onChange={onChange} toast={toast}/>)}
+                {filtered.slice().sort((a,b)=>((isGala(b)?1:0)-(isGala(a)?1:0))||a.event_date.localeCompare(b.event_date)).map(h=><EventCard key={h.id} home={h} signups={signups} guests={guests} homes={homes} db={db} onChange={onChange} toast={toast}/>)}
                 {!active && <button className="addcard" onClick={onCreate}><div><div className="plus"><SVG d={I.plus} size={22}/></div><b>สร้างงาน Home</b><span>เพิ่มงานใหม่ลงบอร์ด</span></div></button>}
               </div>}
         </>}
