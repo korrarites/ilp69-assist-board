@@ -1687,13 +1687,18 @@ function ProgressModal({rep, homes, guests, db, onChange, toast, onClose}){
 /* ===== Goal board (ตั้งเป้าหมายรายคน · Promise / Actual รายสัปดาห์) ===== */
 function ymd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 const GOAL_MILES=[{label:"Weekend 2",dates:["2026-06-20","2026-06-21"]},{label:"Weekend 3",dates:["2026-08-08","2026-08-09"]},{label:"Weekend 4",dates:["2026-09-26","2026-09-27"]}];
-function goalCols(){ const cols=[]; let cur=new Date("2026-06-20T00:00:00"); const end=new Date("2026-09-27T00:00:00");
-  const msByDate={}; GOAL_MILES.forEach(m=>m.dates.forEach(d=>msByDate[d]=m.label)); let seq=0;
-  while(cur<=end){ const s=new Date(cur); const e=new Date(cur.getTime()+6*86400000); const sStr=ymd(s),eStr=ymd(e);
-    let ms=null; Object.keys(msByDate).forEach(d=>{ if(d>=sStr&&d<=eStr) ms=msByDate[d]; });
-    if(ms){ seq=0; cols.push({label:ms,s:sStr,e:eStr,ms:true}); } else { seq++; cols.push({label:String(seq),s:sStr,e:eStr,ms:false}); }
-    cur=new Date(e.getTime()+86400000); }
+function pushWeeks(cols, fromStr, stopStr){ let cur=new Date(fromStr+"T00:00:00"); const stop=new Date(stopStr+"T00:00:00"); let n=0;
+  while(cur<stop){ n++; let e=new Date(cur.getTime()+6*86400000); if(e>=stop) e=new Date(stop.getTime()-86400000);
+    cols.push({label:String(n),s:ymd(cur),e:ymd(e),ms:false}); cur=new Date(e.getTime()+86400000); } }
+function goalCols(){ const cols=[];
+  cols.push({label:"Weekend 2",sub:"20-21 มิย",s:"2026-06-20",e:"2026-06-21",ms:true});
+  pushWeeks(cols,"2026-06-22","2026-08-08");
+  cols.push({label:"Weekend 3",sub:"8-9 สค",s:"2026-08-08",e:"2026-08-09",ms:true});
+  pushWeeks(cols,"2026-08-10","2026-09-26");
+  cols.push({label:"Weekend 4",sub:"26-27 กย",s:"2026-09-26",e:"2026-09-27",ms:true});
   return cols; }
+const KIND_SHORT={"Home":"HI","Center Intro":"CI","Evening Session":"ES","Call Out":"C/O"};
+function dDM(s){ if(!s) return ""; const d=new Date(s+"T00:00:00"); return d.getDate()+"/"+(d.getMonth()+1); }
 function goalData(homes, guests, host){
   const key=nrm(host), hn=(host||"").trim().toLowerCase();
   const cols=goalCols(); const nC=cols.length;
@@ -1715,7 +1720,13 @@ function goalData(homes, guests, host){
   const ownHomes=homes.filter(h=>nrm(h.host_name)===key);
   const hiPromise=ownHomes.filter(h=>(h.kind||"Home")==="Home").length;
   const hiActual=ownHomes.filter(h=>(h.kind||"Home")==="Home"&&arrived(h)).length;
-  return {cols, promise, actual, eventDates, hiPromise, hiActual};
+  /* งาน (Home/Event) ในแต่ละสัปดาห์ — ของตัวเอง + งานส่วนกลางที่ตัวเองเชิญแขก */
+  const evByCol=cols.map(()=>[]); const seen={};
+  const addEv=(h,central)=>{ if(seen[h.id]) return; seen[h.id]=1; const ci=colIdx(h.event_date); if(ci<0) return; evByCol[ci].push({kind:h.kind||"Home",date:h.event_date,central}); };
+  ownHomes.forEach(h=>addEv(h,false));
+  (guests||[]).forEach(g=>{ const h=homeById[g.home_id]; if(!h) return; const inv=(g.inviter||"").trim().toLowerCase(); if(inv===hn&&isCentral(h)&&nrm(h.host_name)!==key) addEv(h,true); });
+  evByCol.forEach(a=>a.sort((x,y)=>(x.date||"").localeCompare(y.date||"")));
+  return {cols, promise, actual, eventDates, hiPromise, hiActual, evByCol};
 }
 function GoalCalendar({eventDates}){
   const msSet={}; GOAL_MILES.forEach(m=>m.dates.forEach(d=>msSet[d]=m.label));
@@ -1759,9 +1770,14 @@ function GoalBoard({host, homes, guests, goal, db, onChange, toast}){
   const aIntro=ovr(d.actual.intro,"intro"), aHI=ovr(d.actual.hi,"hi"), aReg=ovr(d.actual.reg,"reg"), aCO=ovr(d.actual.co,"co");
   const sum=a=>a.reduce((n,x)=>n+(+x||0),0);
   const cols=d.cols;
-  const Th=()=> <thead><tr><th style={{textAlign:"left",minWidth:96,position:"sticky",left:0,background:"#f6faf7"}}>หัวข้อ</th>
-    {cols.map((c,i)=><th key={i} style={{minWidth:42,background:c.ms?"#cdebd6":"#f6faf7",whiteSpace:"nowrap"}}>{c.label}{c.ms&&<div style={{fontWeight:400,fontSize:9}}>{c.s.slice(8)}-{c.e.slice(8)}</div>}</th>)}
-    <th style={{background:"#fff3bf",minWidth:46}}>รวม</th><th style={{background:"#ffe8cc",minWidth:46}}>To Go</th></tr></thead>;
+  const Th=()=> <thead>
+    <tr><th style={{textAlign:"left",minWidth:96,position:"sticky",left:0,background:"#f6faf7"}}>หัวข้อ</th>
+      {cols.map((c,i)=><th key={i} style={{minWidth:48,background:c.ms?"#cdebd6":"#f6faf7",whiteSpace:"nowrap"}}>{c.label}{(c.sub||c.ms)&&<div style={{fontWeight:400,fontSize:9}}>{c.sub||(c.s.slice(8)+"-"+c.e.slice(8))}</div>}</th>)}
+      <th style={{background:"#fff3bf",minWidth:46}}>รวม</th><th style={{background:"#ffe8cc",minWidth:46}}>To Go</th></tr>
+    <tr><th style={{textAlign:"left",position:"sticky",left:0,background:"#f6faf7",fontWeight:600,fontSize:10,color:"var(--muted)"}}>งาน</th>
+      {cols.map((c,i)=>{ const ev=d.evByCol[i]||[]; return <th key={i} style={{background:c.ms?"#eafaf0":"#fcfdfc",fontWeight:600,fontSize:9.5,padding:"2px 3px",verticalAlign:"top"}}>{ev.length===0?<span style={{color:"#dadada"}}>–</span>:ev.map((e,j)=><div key={j} style={{whiteSpace:"nowrap",color:e.central?"#6b3fa0":"#16734a"}}>{KIND_SHORT[e.kind]||e.kind} {dDM(e.date)}{e.central?"★":""}</div>)}</th>; })}
+      <th style={{background:"#fff3bf"}}/><th style={{background:"#ffe8cc"}}/></tr>
+  </thead>;
   const dataRow=(label,arr,total,togo,color)=> <tr><td style={{textAlign:"left",fontWeight:600,position:"sticky",left:0,background:color||"#fff"}}>{label}</td>
     {arr.map((v,i)=><td key={i} style={{textAlign:"center",background:cols[i].ms?"#eefaf1":undefined,color:v?"#16389e":"#ccc"}}>{v||""}</td>)}
     <td style={{textAlign:"center",fontWeight:700,background:"#fffbe6"}}>{total}</td>
