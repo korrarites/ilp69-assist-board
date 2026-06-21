@@ -770,7 +770,7 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
   const save=async()=>{ if(!ok) return; setBusy(true);
     try{ const slot=f.time_slot==="อื่นๆ"?(f.slotOther.trim()||"อื่นๆ"):f.time_slot;
       const payload={ host_name:f.host_name.trim(), host_group:(f.host_group===""?null:parseInt(f.host_group)), title:f.title.trim()||null, kind:f.kind||"Home", event_date:f.event_date, time_slot:slot,
-        channel:f.channel, address:f.address.trim()||null, assists_needed:Math.min(9,Math.max(0,parseInt(f.assists_needed)||0)),
+        channel:f.channel, address:f.address.trim()||null, assists_needed:Math.min(30,Math.max(0,parseInt(f.assists_needed)||0)),
         host_contact:f.host_contact.trim()||null, note:f.note.trim()||null, intro_leader:f.intro_leader.trim()||null, zoom_manager:f.zoom_manager.trim()||null };
       if(edit){ await db.updateHome(home.id,payload); toast("บันทึกการแก้ไขแล้ว"); }
       else{ await db.createHome({...payload, completed:false, result_g:null, result_r:null}); toast("สร้างงาน Home เรียบร้อย"); }
@@ -813,8 +813,8 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
           <div className="two">
             <div className="field"><label>Channel</label>
               <select className="sel" value={f.channel} onChange={e=>set("channel",e.target.value)}>{CHANNELS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-            <div className="field"><label>จำนวน Assist ที่เปิดรับ (0–9 · Event ใส่ 0 ได้)</label>
-              <input className="inp" type="number" min="0" max="9" value={f.assists_needed} onChange={e=>set("assists_needed",e.target.value)} /></div>
+            <div className="field"><label>จำนวน Assist ที่เปิดรับ (0–30 · Event ใส่ 0 ได้)</label>
+              <input className="inp" type="number" min="0" max="30" value={f.assists_needed} onChange={e=>set("assists_needed",e.target.value)} /></div>
           </div>
           <div className="field"><label>{onsite?"ที่อยู่ (Onsite) *":"Address (ถ้าเป็น Onsite)"}</label>
             <input className="inp" value={f.address} placeholder={onsite?"กรอกสถานที่จัดงาน":"เว้นว่างได้ถ้าออนไลน์"} onChange={e=>set("address",e.target.value)} /></div>
