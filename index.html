@@ -1690,7 +1690,7 @@ function HostView({homes, signups, guests, weeklies, progress, db, onChange, toa
           <input className="inp" list="hostlist" value={q} placeholder="เช่น วัฒน์69" onChange={e=>setQ(e.target.value)} />
           <datalist id="hostlist">{hostNames.map(n=><option key={n} value={n}/>)}</datalist></div></div>
       </div>
-      {q && mine.length>0 && <div style={{marginTop:16}}><CriteriaPanel s={critStats(homes, q)} /></div>}
+      {q && mine.length>0 && <div style={{marginTop:16}}><CriteriaPanel s={critStats(homes, q, guests)} /></div>}
       {q && <div style={{marginTop:16}}>
         <div className="panel" style={{padding:"8px 10px",marginBottom:16,display:"flex",gap:6,flexWrap:"wrap"}}>
           {[{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"},{id:"progress",label:"รายงานผลลัพธ์"}].map(tt=>
@@ -1781,12 +1781,17 @@ const nrm=(s)=>(s||"").trim().replace(/\s+/g," ")||"—";
 /* เกณฑ์ Leadership Program: Home สำเร็จ = Guest ≥4 และลงทะเบียน ≥25% ของ Guest */
 const CRIT_ORG=3, CRIT_GUEST=25, CRIT_REG=12, MIN_GUEST=4;
 const isSuccessHome=(h)=> (h.result_g||0)>=MIN_GUEST && (h.result_r||0)*4>=(h.result_g||0);
-function critStats(homes, hostName){
+function critStats(homes, hostName, guests){
   const key=nrm(hostName); const mine=homes.filter(h=>nrm(h.host_name)===key);
   const arr=mine.filter(arrived); /* นับ Guest/ลงทะเบียน/สำเร็จ เฉพาะงานที่ถึงวันแล้ว */
   const cnt=k=>mine.filter(h=>(h.kind||"Home")===k).length;
   const sucCnt=k=>arr.filter(h=>(h.kind||"Home")===k&&isSuccessHome(h)).length;
-  const guest=arr.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0);
+  const guestOwn=arr.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0);
+  /* + Guest ที่ตัวเองเป็นผู้เชิญ ในอีเวนต์ส่วนกลาง (Landmark) และติ๊กว่า "มา" (นับตามการติ๊กมา ไม่ขึ้นกับวันที่) */
+  const hn=(hostName||"").trim().toLowerCase();
+  const centralIds=new Set(homes.filter(h=>isCentral(h)&&nrm(h.host_name)!==key).map(h=>h.id));
+  const guestCentral=hn?(guests||[]).filter(g=>g.attended&&centralIds.has(g.home_id)&&(g.inviter||"").trim().toLowerCase()===hn).length:0;
+  const guest=guestOwn+guestCentral;
   const reg=arr.reduce((n,h)=>n+(h.result_r||0),0);
   const orgSuccess=arr.filter(h=>(h.kind||"Home")==="Home"&&isSuccessHome(h)).length;
   const c1=orgSuccess>=CRIT_ORG, c2=guest>=CRIT_GUEST, c3=reg>=CRIT_REG;
@@ -1851,7 +1856,7 @@ function StatLeaders({title, icon, rows, unit, accent}){
     </div>
   );
 }
-function DashboardView({homes, signups}){
+function DashboardView({homes, signups, guests}){
   const [q,setQ]=useState("");
   /* ---- รวมสถิติฝั่งผู้จัด Home ---- */
   const hostMap={};
@@ -1874,7 +1879,7 @@ function DashboardView({homes, signups}){
   const grOf=(arr)=>arr.reduce((o,h)=>(h.completed?{g:o.g+(h.result_g||0),r:o.r+(h.result_r||0),done:o.done+1}:o),{g:0,r:0,done:0});
   const kindStats=KINDS.map(k=>{ const items=homes.filter(h=>(h.kind||"Home")===k); return {kind:k, count:items.length, gr:grOf(items)}; });
   /* ---- เกณฑ์รายคน (ทุกคนที่เคยจัดงาน) ---- */
-  const critList=Object.keys(hostMap).map(n=>critStats(homes,n)).sort((a,b)=>b.passed-a.passed||b.orgSuccess-a.orgSuccess||b.guest-a.guest);
+  const critList=Object.keys(hostMap).map(n=>critStats(homes,n,guests)).sort((a,b)=>b.passed-a.passed||b.orgSuccess-a.orgSuccess||b.guest-a.guest);
   const qualified=critList.filter(s=>s.passed===3).length;
   /* ---- leaderboards ---- */
   const hostLeaders=hostRows.filter(h=>h.homeOnly>0).sort((a,b)=>b.homeOnly-a.homeOnly||b.homeSuc-a.homeSuc)
@@ -1929,21 +1934,21 @@ function DashboardView({homes, signups}){
 }
 
 /* ===== เกณฑ์รายคน + สถิติรายบุคคล (แท็บแยก) ===== */
-function CriteriaView({homes, signups}){
+function CriteriaView({homes, signups, guests}){
   const [q,setQ]=useState(""); const [fGroup,setFGroup]=useState(""); const [sort,setSort]=useState("group");
   const homeById={}; homes.forEach(h=>homeById[h.id]=h);
   const groupOf=(name)=>{ const hs=homes.filter(h=>nrm(h.host_name)===nrm(name)&&h.host_group!=null);
     if(!hs.length) return null; const c={}; hs.forEach(h=>{c[h.host_group]=(c[h.host_group]||0)+1;});
     return parseInt(Object.keys(c).sort((a,b)=>c[b]-c[a])[0]); };
   const names=Array.from(new Set([...HOST_ROSTER, ...homes.map(h=>nrm(h.host_name))])).filter(Boolean);
-  let rows=names.map(n=>({...critStats(homes,n), group:groupOf(n)}));
+  let rows=names.map(n=>({...critStats(homes,n,guests), group:groupOf(n)}));
   const groups=Array.from(new Set(rows.map(r=>r.group).filter(g=>g!=null))).sort((a,b)=>a-b);
   const qualified=rows.filter(r=>r.passed===3).length, activeN=rows.filter(r=>r.total>0).length;
   if(fGroup) rows=rows.filter(r=> fGroup==="none"? r.group==null : String(r.group)===fGroup);
   if(sort==="group") rows.sort((a,b)=> (a.group==null?99:a.group)-(b.group==null?99:b.group) || b.passed-a.passed || b.orgSuccess-a.orgSuccess || a.name.localeCompare(b.name,"th"));
   else rows.sort((a,b)=> b.passed-a.passed || b.orgSuccess-a.orgSuccess || b.guest-a.guest || a.name.localeCompare(b.name,"th"));
   const sel=q.trim()?nrm(q):"";
-  const selStats=sel?critStats(homes,sel):null;
+  const selStats=sel?critStats(homes,sel,guests):null;
   const mineHomes=sel?homes.filter(h=>nrm(h.host_name)===sel).sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")):[];
   const helped=sel?signups.filter(s=>nrm(s.assist_name)===sel).map(s=>homeById[s.home_id]).filter(Boolean).sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")):[];
   const allNames=Array.from(new Set([...names, ...signups.map(s=>nrm(s.assist_name))])).sort((a,b)=>a.localeCompare(b,"th"));
@@ -2244,7 +2249,7 @@ function App(){
             {tab==="board"   && <BoardView   homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
             {tab==="archive" && <ArchiveView homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} />}
             {tab==="dash"    && <DashboardView homes={homes} signups={signups} guests={guests} />}
-            {tab==="members" && <CriteriaView homes={homes} signups={signups} />}
+            {tab==="members" && <CriteriaView homes={homes} signups={signups} guests={guests} />}
             {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} weeklies={weeklies} progress={progress} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
           </>}
       {showCreate && <CreateModal db={db} onChange={refresh} toast={toast} onClose={()=>setShowCreate(false)} />}
