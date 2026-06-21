@@ -182,6 +182,10 @@
   .modal-f{padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:#fff}
 
   .hostgrid{display:grid;grid-template-columns:1fr;gap:16px}
+  .goaltbl{border-collapse:collapse;font-size:12px;width:max-content;min-width:100%}
+  .goaltbl th,.goaltbl td{border:1px solid #e3e8e4;padding:3px 5px}
+  .goaltbl th{font-weight:700;text-align:center}
+  .goaltbl tr.gsec td{background:#eef4f0;font-weight:700;text-align:left;color:var(--ink-soft)}
   .hostcard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
   .hostcard.gala,.card.gala{border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(120deg,#f7b733,#fc4a1a,#f15bb5,#9b5de5,#00bbf9) border-box;box-shadow:0 10px 34px rgba(155,93,229,.28);position:relative}
   .hostcard.gala::after,.card.gala::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 12% 0%,rgba(247,183,51,.16),transparent 42%),radial-gradient(circle at 92% 8%,rgba(155,93,229,.16),transparent 42%)}
@@ -455,20 +459,23 @@ function makeSupabaseDB(cfg){
     async createProgress(w){ const {data,error}=await sb.from("ilp69_progress").insert(w).select("id").single(); if(error) throw error; return data.id; },
     async updateProgress(id,p){ const {error}=await sb.from("ilp69_progress").update(p).eq("id",id); if(error) throw error; },
     async deleteProgress(id){ const {error}=await sb.from("ilp69_progress").delete().eq("id",id); if(error) throw error; },
+    async listGoals(){ const {data,error}=await sb.from("ilp69_goals").select("*"); if(error) throw error; return data||[]; },
+    async upsertGoal(host_name,data){ const {error}=await sb.from("ilp69_goals").upsert({host_name,data},{onConflict:"host_name"}); if(error) throw error; },
     async countHomes(){ const {count,error}=await sb.from("ilp69_homes").select("id",{count:"exact",head:true}); if(error) throw error; return count||0; },
     subscribe(cb){ const ch=sb.channel("ilp69-rt")
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_homes"},cb)
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_signups"},cb)
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_guests"},cb)
       .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_weekly"},cb)
-      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_progress"},cb).subscribe();
+      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_progress"},cb)
+      .on("postgres_changes",{event:"*",schema:"public",table:"ilp69_goals"},cb).subscribe();
       return ()=>{try{sb.removeChannel(ch)}catch(e){}}; }
   };
 }
 function makeDemoDB(){
   const K="ilp69_demo_v3";
   const read=()=>{ let d; try{d=JSON.parse(localStorage.getItem(K)||'{"homes":[],"signups":[],"guests":[],"logs":[],"weekly":[],"progress":[]}')}catch(e){d={homes:[],signups:[],guests:[],logs:[],weekly:[],progress:[]}}
-    d.homes=d.homes||[]; d.signups=d.signups||[]; d.guests=d.guests||[]; d.logs=d.logs||[]; d.weekly=d.weekly||[]; d.progress=d.progress||[]; return d; };
+    d.homes=d.homes||[]; d.signups=d.signups||[]; d.guests=d.guests||[]; d.logs=d.logs||[]; d.weekly=d.weekly||[]; d.progress=d.progress||[]; d.goals=d.goals||[]; return d; };
   const write=(d)=>{ localStorage.setItem(K,JSON.stringify(d)); window.dispatchEvent(new Event("ilp69-demo-change")); };
   const uid=()=>(crypto.randomUUID?crypto.randomUUID():"id"+Date.now()+Math.random().toString(16).slice(2));
   if(!localStorage.getItem(K)){
@@ -501,6 +508,8 @@ function makeDemoDB(){
     async createProgress(w){ const d=read(); const id=uid(); d.progress.push({...w,id,created_at:new Date().toISOString()}); write(d); return id; },
     async updateProgress(id,p){ const d=read(); d.progress=d.progress.map(x=>x.id===id?{...x,...p}:x); write(d); },
     async deleteProgress(id){ const d=read(); d.progress=d.progress.filter(x=>x.id!==id); write(d); },
+    async listGoals(){ return (read().goals||[]); },
+    async upsertGoal(host_name,data){ const d=read(); d.goals=d.goals||[]; const i=d.goals.findIndex(x=>x.host_name===host_name); if(i>=0) d.goals[i]={...d.goals[i],data}; else d.goals.push({id:uid(),host_name,data}); write(d); },
     async countHomes(){ return read().homes.length; },
     subscribe(cb){ const f=()=>cb(); window.addEventListener("ilp69-demo-change",f); window.addEventListener("storage",f);
       return ()=>{window.removeEventListener("ilp69-demo-change",f);window.removeEventListener("storage",f);}; }
@@ -760,9 +769,9 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
     ? {host_name:home.host_name||"",host_group:home.host_group==null?"":String(home.host_group),title:home.title||"",kind:home.kind||"Home",
        event_date:home.event_date||"",time_slot:(home.kind==="Call Out")?SLOT_CALLOUT:(knownSlot?home.time_slot:"อื่นๆ"),slotOther:knownSlot?"":(home.time_slot||""),
        channel:home.channel||"Online-Zoom",address:home.address||"",assists_needed:(home.assists_needed==null?9:home.assists_needed),
-       host_contact:home.host_contact||"",note:home.note||"",intro_leader:home.intro_leader||"",zoom_manager:home.zoom_manager||""}
+       host_contact:home.host_contact||"",note:home.note||"",intro_leader:home.intro_leader||"",zoom_manager:home.zoom_manager||"",promise_g:home.promise_g==null?"":String(home.promise_g),promise_r:home.promise_r==null?"":String(home.promise_r)}
     : {host_name:defaultHost||"",host_group:"",title:"",kind:"Home",event_date:"",time_slot:SLOT_EVENING,slotOther:"",
-       channel:"Online-Zoom",address:"",assists_needed:9,host_contact:"",note:"",intro_leader:"",zoom_manager:""});
+       channel:"Online-Zoom",address:"",assists_needed:9,host_contact:"",note:"",intro_leader:"",zoom_manager:"",promise_g:"",promise_r:""});
   const [busy,setBusy]=useState(false); const set=(k,v)=>setF(s=>({...s,[k]:v}));
   /* เปลี่ยนประเภท: ตอนสร้างใหม่ Home ตั้ง 9, Event/Call Out ตั้ง 0 (ปรับเองได้) */
   const setKind=(k)=>setF(s=>({...s,kind:k,time_slot:k==="Call Out"?SLOT_CALLOUT:(s.kind==="Call Out"?SLOT_EVENING:s.time_slot),...(edit?{}:{assists_needed:k==="Home"?9:0})}));
@@ -771,7 +780,8 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
     try{ const slot=f.time_slot==="อื่นๆ"?(f.slotOther.trim()||"อื่นๆ"):f.time_slot;
       const payload={ host_name:f.host_name.trim(), host_group:(f.host_group===""?null:parseInt(f.host_group)), title:f.title.trim()||null, kind:f.kind||"Home", event_date:f.event_date, time_slot:slot,
         channel:f.channel, address:f.address.trim()||null, assists_needed:Math.min(30,Math.max(0,parseInt(f.assists_needed)||0)),
-        host_contact:f.host_contact.trim()||null, note:f.note.trim()||null, intro_leader:f.intro_leader.trim()||null, zoom_manager:f.zoom_manager.trim()||null };
+        host_contact:f.host_contact.trim()||null, note:f.note.trim()||null, intro_leader:f.intro_leader.trim()||null, zoom_manager:f.zoom_manager.trim()||null,
+        promise_g:f.promise_g===""?null:(parseInt(f.promise_g)||0), promise_r:f.promise_r===""?null:(parseInt(f.promise_r)||0) };
       if(edit){ await db.updateHome(home.id,payload); toast("บันทึกการแก้ไขแล้ว"); }
       else{ await db.createHome({...payload, completed:false, result_g:null, result_r:null}); toast("สร้างงาน Home เรียบร้อย"); }
       onChange(); onClose();
@@ -815,6 +825,12 @@ function CreateModal({onClose, db, onChange, toast, defaultHost, home}){
               <select className="sel" value={f.channel} onChange={e=>set("channel",e.target.value)}>{CHANNELS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
             <div className="field"><label>จำนวน Assist ที่เปิดรับ (0–30 · Event ใส่ 0 ได้)</label>
               <input className="inp" type="number" min="0" max="30" value={f.assists_needed} onChange={e=>set("assists_needed",e.target.value)} /></div>
+          </div>
+          <div className="two">
+            <div className="field"><label>🎯 Promise — เป้าหมายแขก (Guest) ของงานนี้</label>
+              <input className="inp" type="number" min="0" value={f.promise_g} placeholder="เช่น 4" onChange={e=>set("promise_g",e.target.value)} /></div>
+            <div className="field"><label>🎯 Promise — เป้าหมายลงทะเบียน (Register)</label>
+              <input className="inp" type="number" min="0" value={f.promise_r} placeholder="เช่น 2" onChange={e=>set("promise_r",e.target.value)} /></div>
           </div>
           <div className="field"><label>{onsite?"ที่อยู่ (Onsite) *":"Address (ถ้าเป็น Onsite)"}</label>
             <input className="inp" value={f.address} placeholder={onsite?"กรอกสถานที่จัดงาน":"เว้นว่างได้ถ้าออนไลน์"} onChange={e=>set("address",e.target.value)} /></div>
@@ -1668,8 +1684,149 @@ function ProgressModal({rep, homes, guests, db, onChange, toast, onClose}){
     </div>
   );
 }
-function HostView({homes, signups, guests, weeklies, progress, db, onChange, toast, onCreate}){
-  const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null); const [weeklyEditId,setWeeklyEditId]=useState(null); const [progressEditId,setProgressEditId]=useState(null); const [hostTab,setHostTab]=useState("guest"); const [cardKind,setCardKind]=useState("");
+/* ===== Goal board (ตั้งเป้าหมายรายคน · Promise / Actual รายสัปดาห์) ===== */
+function ymd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+const GOAL_MILES=[{label:"Weekend 2",dates:["2026-06-20","2026-06-21"]},{label:"Weekend 3",dates:["2026-08-08","2026-08-09"]},{label:"Weekend 4",dates:["2026-09-26","2026-09-27"]}];
+function goalCols(){ const cols=[]; let cur=new Date("2026-06-20T00:00:00"); const end=new Date("2026-09-27T00:00:00");
+  const msByDate={}; GOAL_MILES.forEach(m=>m.dates.forEach(d=>msByDate[d]=m.label)); let seq=0;
+  while(cur<=end){ const s=new Date(cur); const e=new Date(cur.getTime()+6*86400000); const sStr=ymd(s),eStr=ymd(e);
+    let ms=null; Object.keys(msByDate).forEach(d=>{ if(d>=sStr&&d<=eStr) ms=msByDate[d]; });
+    if(ms){ seq=0; cols.push({label:ms,s:sStr,e:eStr,ms:true}); } else { seq++; cols.push({label:String(seq),s:sStr,e:eStr,ms:false}); }
+    cur=new Date(e.getTime()+86400000); }
+  return cols; }
+function goalData(homes, guests, host){
+  const key=nrm(host), hn=(host||"").trim().toLowerCase();
+  const cols=goalCols(); const nC=cols.length;
+  const colIdx=(d)=>{ if(!d) return -1; if(d<=cols[0].e) return 0; for(let i=0;i<nC;i++){ if(d>=cols[i].s&&d<=cols[i].e) return i; } return d>cols[nC-1].e?nC-1:-1; };
+  const homeById={}; homes.forEach(h=>homeById[h.id]=h);
+  const blank=()=>Array(nC).fill(0);
+  const promise={intro:blank(),hi:blank(),reg:blank(),co:blank()};
+  const actual={intro:blank(),hi:blank(),reg:blank(),co:blank()};
+  const eventDates=new Set();
+  const rowOfGuest=(k)=> k==="Home"?"hi":((k==="Center Intro"||k==="Evening Session")?"intro":null);
+  homes.filter(h=>nrm(h.host_name)===key).forEach(h=>{ const ci=colIdx(h.event_date); const k=h.kind||"Home"; eventDates.add(h.event_date); if(ci<0) return;
+    const gr=rowOfGuest(k); if(gr&&h.promise_g) promise[gr][ci]+=h.promise_g;
+    if(h.promise_r){ if(k==="Call Out") promise.co[ci]+=h.promise_r; else promise.reg[ci]+=h.promise_r; } });
+  (guests||[]).forEach(g=>{ const h=homeById[g.home_id]; if(!h) return; const inv=(g.inviter||"").trim().toLowerCase();
+    const mine = inv ? inv===hn : nrm(h.host_name)===key; if(!mine) return;
+    eventDates.add(h.event_date); const ci=colIdx(h.event_date); if(ci<0) return; const k=h.kind||"Home";
+    if(g.attended){ const gr=rowOfGuest(k); if(gr) actual[gr][ci]++; }
+    if(g.registered){ if(k==="Call Out") actual.co[ci]++; else actual.reg[ci]++; } });
+  const ownHomes=homes.filter(h=>nrm(h.host_name)===key);
+  const hiPromise=ownHomes.filter(h=>(h.kind||"Home")==="Home").length;
+  const hiActual=ownHomes.filter(h=>(h.kind||"Home")==="Home"&&arrived(h)).length;
+  return {cols, promise, actual, eventDates, hiPromise, hiActual};
+}
+function GoalCalendar({eventDates}){
+  const msSet={}; GOAL_MILES.forEach(m=>m.dates.forEach(d=>msSet[d]=m.label));
+  const months=[[2026,5],[2026,6],[2026,7],[2026,8]]; /* มิ.ย.–ก.ย. (0-based) */
+  const moName=(y,m)=>new Intl.DateTimeFormat("th-TH",{month:"long",year:"numeric"}).format(new Date(y,m,1));
+  return (
+    <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+      {months.map(([y,m])=>{ const first=new Date(y,m,1); const days=new Date(y,m+1,0).getDate(); const lead=first.getDay();
+        const cells=[]; for(let i=0;i<lead;i++) cells.push(null); for(let d=1;d<=days;d++) cells.push(d);
+        return (
+          <div key={y+"-"+m} style={{border:"1px solid var(--line)",borderRadius:10,padding:"8px 10px",minWidth:210}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:6,textAlign:"center"}}>{moName(y,m)}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,fontSize:11}}>
+              {["อา","จ","อ","พ","พฤ","ศ","ส"].map(w=><div key={w} style={{textAlign:"center",color:"var(--muted)",fontWeight:600}}>{w}</div>)}
+              {cells.map((d,i)=>{ if(d==null) return <div key={i}/>; const ds=ymd(new Date(y,m,d));
+                const isMs=!!msSet[ds]; const isEv=eventDates.has(ds);
+                const bg=isMs?"#ffd43b":(isEv?"#b9f0cf":"transparent"); const bd=isMs?"#e0a800":(isEv?"#16a34a":"transparent");
+                return <div key={i} title={isMs?msSet[ds]:(isEv?"มีกิจกรรม":"")} style={{textAlign:"center",padding:"3px 0",borderRadius:6,background:bg,border:"1px solid "+bd,fontWeight:(isMs||isEv)?700:400}}>{d}</div>; })}
+            </div>
+          </div>); })}
+      <div style={{display:"flex",gap:14,alignItems:"center",fontSize:12,width:"100%",marginTop:2}}>
+        <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{width:14,height:14,background:"#ffd43b",border:"1px solid #e0a800",borderRadius:4,display:"inline-block"}}/>Milestone (Weekend)</span>
+        <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{width:14,height:14,background:"#b9f0cf",border:"1px solid #16a34a",borderRadius:4,display:"inline-block"}}/>วันจัดกิจกรรม/เชิญแขก</span>
+      </div>
+    </div>
+  );
+}
+function GoalBoard({host, homes, guests, goal, db, onChange, toast}){
+  const d=goalData(homes, guests, host);
+  const g=(goal&&goal.data)||{};
+  const [f,setF]=useState(()=>({tG:g.tG!=null?g.tG:30,tR:g.tR!=null?g.tR:15,tHI:g.tHI!=null?g.tHI:3,tCO:g.tCO!=null?g.tCO:3,
+    w2:{intro:g.w2&&g.w2.intro!=null?g.w2.intro:"",hi:g.w2&&g.w2.hi!=null?g.w2.hi:"",reg:g.w2&&g.w2.reg!=null?g.w2.reg:"",co:g.w2&&g.w2.co!=null?g.w2.co:""}}));
+  useEffect(()=>{ const g=(goal&&goal.data)||{}; setF({tG:g.tG!=null?g.tG:30,tR:g.tR!=null?g.tR:15,tHI:g.tHI!=null?g.tHI:3,tCO:g.tCO!=null?g.tCO:3,
+    w2:{intro:g.w2&&g.w2.intro!=null?g.w2.intro:"",hi:g.w2&&g.w2.hi!=null?g.w2.hi:"",reg:g.w2&&g.w2.reg!=null?g.w2.reg:"",co:g.w2&&g.w2.co!=null?g.w2.co:""}}); },[host, goal]);
+  const save=(nf)=>{ const payload={tG:+nf.tG||0,tR:+nf.tR||0,tHI:+nf.tHI||0,tCO:+nf.tCO||0,
+    w2:{intro:nf.w2.intro===""?"":(+nf.w2.intro||0),hi:nf.w2.hi===""?"":(+nf.w2.hi||0),reg:nf.w2.reg===""?"":(+nf.w2.reg||0),co:nf.w2.co===""?"":(+nf.w2.co||0)}};
+    db.upsertGoal(host,payload).then(onChange).catch(e=>toast("บันทึกไม่สำเร็จ: "+(e.message||e))); };
+  const setT=(k,v)=>{ const nf={...f,[k]:v}; setF(nf); };
+  const setW2=(k,v)=>{ const nf={...f,w2:{...f.w2,[k]:v}}; setF(nf); };
+  const ovr=(arr,k)=>{ const a=arr.slice(); const v=f.w2[k]; if(v!==""&&v!=null) a[0]=parseInt(v)||0; return a; };
+  const aIntro=ovr(d.actual.intro,"intro"), aHI=ovr(d.actual.hi,"hi"), aReg=ovr(d.actual.reg,"reg"), aCO=ovr(d.actual.co,"co");
+  const sum=a=>a.reduce((n,x)=>n+(+x||0),0);
+  const cols=d.cols;
+  const Th=()=> <thead><tr><th style={{textAlign:"left",minWidth:96,position:"sticky",left:0,background:"#f6faf7"}}>หัวข้อ</th>
+    {cols.map((c,i)=><th key={i} style={{minWidth:42,background:c.ms?"#cdebd6":"#f6faf7",whiteSpace:"nowrap"}}>{c.label}{c.ms&&<div style={{fontWeight:400,fontSize:9}}>{c.s.slice(8)}-{c.e.slice(8)}</div>}</th>)}
+    <th style={{background:"#fff3bf",minWidth:46}}>รวม</th><th style={{background:"#ffe8cc",minWidth:46}}>To Go</th></tr></thead>;
+  const dataRow=(label,arr,total,togo,color)=> <tr><td style={{textAlign:"left",fontWeight:600,position:"sticky",left:0,background:color||"#fff"}}>{label}</td>
+    {arr.map((v,i)=><td key={i} style={{textAlign:"center",background:cols[i].ms?"#eefaf1":undefined,color:v?"#16389e":"#ccc"}}>{v||""}</td>)}
+    <td style={{textAlign:"center",fontWeight:700,background:"#fffbe6"}}>{total}</td>
+    <td style={{textAlign:"center",fontWeight:700,background:"#fff4e6",color:togo==null?"#999":(togo>=0?"#16a34a":"#d11a1a")}}>{togo==null?"":togo>=0?"+"+togo:togo}</td></tr>;
+  const editRow=(label,arr,wk,total,color)=> <tr><td style={{textAlign:"left",fontWeight:600,position:"sticky",left:0,background:color||"#fff"}}>{label}</td>
+    {arr.map((v,i)=> i===0
+      ? <td key={i} style={{background:"#fff9db",padding:0}}><input value={f.w2[wk]} onChange={e=>setW2(wk,e.target.value.replace(/[^0-9]/g,""))} onBlur={()=>save(f)} placeholder={String(d.actual[wk][0]||0)} style={{width:40,border:"none",background:"transparent",textAlign:"center",font:"inherit",color:"#7a5200",fontWeight:700}}/></td>
+      : <td key={i} style={{textAlign:"center",background:cols[i].ms?"#eefaf1":undefined,color:v?"#16389e":"#ccc"}}>{v||""}</td>)}
+    <td style={{textAlign:"center",fontWeight:700,background:"#fffbe6"}}>{total}</td><td style={{background:"#fff4e6"}}/></tr>;
+  const pIntro=d.promise.intro,pHI=d.promise.hi,pReg=d.promise.reg,pCO=d.promise.co;
+  const pGuest=sum(pIntro)+sum(pHI), pR=sum(pReg)+sum(pCO);
+  const aGuest=sum(aIntro)+sum(aHI), aR=sum(aReg)+sum(aCO);
+  return (
+    <div>
+      <div className="panel" style={{marginBottom:16}}>
+        <h3 style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.trophy} size={18}/>เป้าหมายของ {host}</h3>
+        <p className="lead">ตั้งเป้าหมาย แล้วระบบดึง Promise (จากการ์ดที่สร้างไว้) และ Actual (ที่ติ๊กมา/ลงทะเบียน) มาเทียบรายสัปดาห์</p>
+        <div className="two">
+          <div className="field"><label>เป้าหมาย Guest (แขก)</label><input className="inp" type="number" value={f.tG} onChange={e=>setT("tG",e.target.value)} onBlur={()=>save(f)} /></div>
+          <div className="field"><label>เป้าหมาย Register (ลงทะเบียน)</label><input className="inp" type="number" value={f.tR} onChange={e=>setT("tR",e.target.value)} onBlur={()=>save(f)} /></div>
+          <div className="field"><label>เป้าหมาย Home Intro (จำนวนครั้ง)</label><input className="inp" type="number" value={f.tHI} onChange={e=>setT("tHI",e.target.value)} onBlur={()=>save(f)} /></div>
+          <div className="field"><label>เป้าหมาย C/O (ลงทะเบียนจาก Call Out)</label><input className="inp" type="number" value={f.tCO} onChange={e=>setT("tCO",e.target.value)} onBlur={()=>save(f)} /></div>
+        </div>
+        <div style={{display:"flex",gap:16,flexWrap:"wrap",marginTop:6,fontSize:13}}>
+          <div>Home Intro ที่ทำแล้ว <b>{d.hiActual}</b> / {f.tHI} ครั้ง</div>
+          <div>C/O ที่ได้ <b>{sum(aCO)}</b> / {f.tCO}</div>
+        </div>
+      </div>
+      <div className="panel" style={{marginBottom:16}}>
+        <div className="eyebrow" style={{marginBottom:8}}>🟨 Promise (ที่สัญญาไว้) — จากการ์ดที่สร้างล่วงหน้า</div>
+        <div className="gwrap" style={{maxHeight:"none"}}><table className="goaltbl"><Th/><tbody>
+          <tr className="gsec"><td colSpan={cols.length+3}>Guest (เป้า {f.tG})</td></tr>
+          {dataRow("Intro (CI/ES)",pIntro,sum(pIntro),null)}
+          {dataRow("HI (Home Intro)",pHI,sum(pHI),null,"#fde7f3")}
+          {dataRow("รวม Guest",cols.map((c,i)=>pIntro[i]+pHI[i]),pGuest,pGuest-f.tG,"#e7f5ec")}
+          <tr className="gsec"><td colSpan={cols.length+3}>Register (เป้า {f.tR})</td></tr>
+          {dataRow("Registration",pReg,sum(pReg),null)}
+          {dataRow("C/O (Call Out)",pCO,sum(pCO),null)}
+          {dataRow("รวม Register",cols.map((c,i)=>pReg[i]+pCO[i]),pR,pR-f.tR,"#e7eefc")}
+        </tbody></table></div>
+      </div>
+      <div className="panel" style={{marginBottom:16}}>
+        <div className="eyebrow" style={{marginBottom:8}}>🟩 Actual (ทำได้จริง) — ช่อง Weekend 2 กรอกเอง (สีเหลือง) · ที่เหลือดึงจากระบบ</div>
+        <div className="gwrap" style={{maxHeight:"none"}}><table className="goaltbl"><Th/><tbody>
+          <tr className="gsec"><td colSpan={cols.length+3}>Guest (เป้า {f.tG})</td></tr>
+          {editRow("Intro (CI/ES)",aIntro,"intro",sum(aIntro))}
+          {editRow("HI (Home Intro)",aHI,"hi",sum(aHI),"#fde7f3")}
+          {dataRow("รวม Guest",cols.map((c,i)=>aIntro[i]+aHI[i]),aGuest,aGuest-f.tG,"#e7f5ec")}
+          <tr className="gsec"><td colSpan={cols.length+3}>Register (เป้า {f.tR})</td></tr>
+          {editRow("Registration",aReg,"reg",sum(aReg))}
+          {editRow("C/O (Call Out)",aCO,"co",sum(aCO))}
+          {dataRow("รวม Register",cols.map((c,i)=>aReg[i]+aCO[i]),aR,aR-f.tR,"#e7eefc")}
+        </tbody></table></div>
+        <p className="lead" style={{marginTop:8,marginBottom:0}}>* To Go = ทำได้ − เป้าหมาย (ติดลบ = ยังขาดอยู่) · Weekend 2 ที่กรอกเองจะถูกใช้แทนตัวเลขระบบเสมอ</p>
+      </div>
+      <div className="panel">
+        <h3 style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.cal} size={18}/>ปฏิทิน Milestone & กิจกรรม</h3>
+        <p className="lead">Weekend 2 (20-21/6) · Weekend 3 (8-9/8) · Weekend 4 (26-27/9)</p>
+        <GoalCalendar eventDates={d.eventDates} />
+      </div>
+    </div>
+  );
+}
+function HostView({homes, signups, guests, weeklies, progress, goals, db, onChange, toast, onCreate}){
+  const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null); const [weeklyEditId,setWeeklyEditId]=useState(null); const [progressEditId,setProgressEditId]=useState(null); const [hostTab,setHostTab]=useState("goal"); const [cardKind,setCardKind]=useState("");
   const myWeeklies=q?(weeklies||[]).filter(w=>nrm(w.host_name)===nrm(q)):[];
   const newWeekly=async()=>{ try{ const id=await db.createWeekly({host_name:q,cohort:"69",nickname:q,name:"",no_id:"",il_coach:"",staff_coach:"",week_start:null,week_end:null,answers:{}}); await onChange(); setWeeklyEditId(id); toast("สร้างรายงานใหม่แล้ว · กรอกได้เลย"); }catch(e){ toast("สร้างไม่สำเร็จ: "+(e.message||e)); } };
   const delWeekly=async(id)=>{ if(!window.confirm("ลบรายงานสัปดาห์นี้?")) return; try{ await db.deleteWeekly(id); onChange(); toast("ลบแล้ว"); }catch(e){ toast("ลบไม่สำเร็จ"); } };
@@ -1697,9 +1854,10 @@ function HostView({homes, signups, guests, weeklies, progress, db, onChange, toa
       {q && mine.length>0 && <div style={{marginTop:16}}><CriteriaPanel s={critStats(homes, q, guests)} /></div>}
       {q && <div style={{marginTop:16}}>
         <div className="panel" style={{padding:"8px 10px",marginBottom:16,display:"flex",gap:6,flexWrap:"wrap"}}>
-          {[{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"},{id:"progress",label:"รายงานผลลัพธ์"}].map(tt=>
+          {[{id:"goal",label:"🎯 ตั้งเป้าหมาย"},{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"},{id:"progress",label:"รายงานผลลัพธ์"}].map(tt=>
             <button key={tt.id} className={"btn btn-sm"+(hostTab===tt.id?" btn-primary":"")} onClick={()=>setHostTab(tt.id)}>{tt.label}</button>)}
         </div>
+        {hostTab==="goal" && <GoalBoard host={q} homes={homes} guests={guests} goal={(goals||[]).find(x=>nrm(x.host_name)===nrm(q))} db={db} onChange={onChange} toast={toast} />}
         {hostTab==="guest" && <HostGuestTable mine={mine} central={homes.filter(h=>isCentral(h)&&h.host_name!==q)} hostName={q} guests={guests} db={db} onChange={onChange} toast={toast} onOpenHome={setGuestFor} />}
         {hostTab==="activity" && <HostActivityTable mine={mine} signups={signups} />}
         {hostTab==="reflect" && <HostReflectTable mine={mine} />}
@@ -2211,13 +2369,13 @@ function App(){
   const dataRef=useRef({homes:[],signups:[],guests:[]});
   const [db,setDb]=useState(()=>{ const c=loadCfg(); return withLog(c?makeSupabaseDB(c):makeDemoDB(), ()=>dataRef.current); });
   const [tab,setTab]=useState("board");
-  const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]); const [weeklies,setWeeklies]=useState([]); const [progress,setProgress]=useState([]);
+  const [homes,setHomes]=useState([]); const [signups,setSignups]=useState([]); const [guests,setGuests]=useState([]); const [weeklies,setWeeklies]=useState([]); const [progress,setProgress]=useState([]); const [goals,setGoals]=useState([]);
   const [loading,setLoading]=useState(true); const [showCreate,setShowCreate]=useState(false); const [showLog,setShowLog]=useState(false);
   const [focusId,setFocusId]=useState(()=>{ const m=(window.location.hash||"").match(/home=([\w-]+)/); return m?m[1]:null; });
   const focusedRef=useRef(false);
   const [toastMsg,setToastMsg]=useState(""); const toastT=useRef();
   const toast=useCallback((m)=>{ setToastMsg(m); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToastMsg(""),2600); },[]);
-  const refresh=useCallback(async()=>{ try{ const [h,s,g,w,pg]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests(),db.listWeekly(),db.listProgress()]); setHomes(h); setSignups(s); setGuests(g); setWeeklies(w); setProgress(pg); dataRef.current={homes:h,signups:s,guests:g}; }
+  const refresh=useCallback(async()=>{ try{ const [h,s,g,w,pg,gl]=await Promise.all([db.listHomes(),db.listSignups(),db.listGuests(),db.listWeekly(),db.listProgress(),db.listGoals?db.listGoals():Promise.resolve([])]); setHomes(h); setSignups(s); setGuests(g); setWeeklies(w); setProgress(pg); setGoals(gl||[]); dataRef.current={homes:h,signups:s,guests:g}; }
     catch(e){ toast("โหลดข้อมูลไม่สำเร็จ: "+(e.message||e)); } setLoading(false); },[db,toast]);
   useEffect(()=>{ setLoading(true); refresh(); const off=db.subscribe(()=>refresh()); return off; },[db,refresh]);
   useEffect(()=>{ const f=()=>refresh(); window.addEventListener("focus",f); const iv=setInterval(refresh,20000);
@@ -2262,7 +2420,7 @@ function App(){
             {tab==="archive" && <ArchiveView homes={homes} signups={signups} guests={guests} db={db} onChange={refresh} toast={toast} />}
             {tab==="dash"    && <DashboardView homes={homes} signups={signups} guests={guests} />}
             {tab==="members" && <CriteriaView homes={homes} signups={signups} guests={guests} />}
-            {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} weeklies={weeklies} progress={progress} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
+            {tab==="host"    && <HostView    homes={homes} signups={signups} guests={guests} weeklies={weeklies} progress={progress} goals={goals} db={db} onChange={refresh} toast={toast} onCreate={()=>setShowCreate(true)} />}
           </>}
       {showCreate && <CreateModal db={db} onChange={refresh} toast={toast} onClose={()=>setShowCreate(false)} />}
       {showLog && <LogModal db={db} onClose={()=>setShowLog(false)} />}
