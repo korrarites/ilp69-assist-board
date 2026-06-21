@@ -1795,7 +1795,9 @@ function critStats(homes, hostName, guests){
   const guestOwn=arr.filter(h=>(h.kind||"Home")!=="Call Out").reduce((n,h)=>{ const att=(guests||[]).filter(g=>g.home_id===h.id&&g.attended).length; return n+Math.max(att,h.result_g||0); },0);
   const guestCentral=hn?(guests||[]).filter(g=>{ const h=homeById[g.home_id]; return h&&g.attended&&isCentral(h)&&nrm(h.host_name)!==key&&arrived(h)&&(h.kind||"Home")!=="Call Out"&&(g.inviter||"").trim().toLowerCase()===hn; }).length:0;
   const guest=guestOwn+guestCentral;
-  const reg=arr.reduce((n,h)=>n+(h.result_r||0),0);
+  /* ลงทะเบียน (ทุกช่องทาง) = งานตัวเอง (result_r) + ที่ตัวเองเชิญในงานส่วนกลางที่เกิดไปแล้ว และติ๊กลงทะเบียน */
+  const regCentral=hn?(guests||[]).filter(g=>{ const h=homeById[g.home_id]; return h&&g.registered&&isCentral(h)&&nrm(h.host_name)!==key&&arrived(h)&&(g.inviter||"").trim().toLowerCase()===hn; }).length:0;
+  const reg=arr.reduce((n,h)=>n+(h.result_r||0),0)+regCentral;
   const orgSuccess=arr.filter(h=>(h.kind||"Home")==="Home"&&isSuccessHome(h)).length;
   const c1=orgSuccess>=CRIT_ORG, c2=guest>=CRIT_GUEST, c3=reg>=CRIT_REG;
   return { name:hostName, total:mine.length+centralPart.length, home:cnt("Home"), homeSuccess:sucCnt("Home"),
