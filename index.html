@@ -1041,6 +1041,10 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
               <input className="inp" list="rosterlist" value={zm} placeholder="เช่น สปาร์ค63" onChange={e=>setZm(e.target.value)} onBlur={()=>zm!==(home.zoom_manager||"")&&saveHdr({zoom_manager:zm.trim()||null})} /></div>
           </div>
           {isCall && <div style={{marginTop:14}}><ReflectField home={home} field="co_value" label="💎 คุณค่าที่สร้างว่าได้รับจากการแอ๊สซิสท์ (กรอกก่อนเริ่มบันทึกรายชื่อ)" ph="คุณค่า / สิ่งที่ได้รับจากการแอ๊สซิสท์" db={db} onChange={onChange} /></div>}
+          <div style={{marginTop:14,padding:"10px 14px",borderRadius:10,background:"linear-gradient(120deg,#fff7e0,#fffdf5)",border:"1.5px solid #e0a800",color:"#7a5200",fontSize:13,lineHeight:1.55,display:"flex",gap:8,alignItems:"flex-start"}}>
+            <span style={{fontSize:16,lineHeight:1.2}}>⚠️</span>
+            <div><b>ระบุ “ผู้เชิญ” ทุกครั้ง</b> — ระบบจะนับเป็นจำนวน <b>Guest</b> ให้กับผู้เชิญเมื่อติ๊กว่า <b>“มา”</b> และนับ <b>ลงทะเบียน</b> เมื่อติ๊ก <b>“ลงทะเบียน”</b><br/>หากไม่ระบุผู้เชิญ จะนับให้กับ <b>ผู้จัด (Host)</b> ของงานนี้</div>
+          </div>
           <div className="gwrap" style={{marginTop:14}}>
             <table className="gtbl">
               <thead><tr>
@@ -1789,15 +1793,18 @@ function critStats(homes, hostName, guests){
   const centralPart=hn?homes.filter(h=>isCentral(h)&&nrm(h.host_name)!==key&&arrived(h)&&(guests||[]).some(g=>g.home_id===h.id&&(g.inviter||"").trim().toLowerCase()===hn)):[];
   const cnt=k=>mine.filter(h=>(h.kind||"Home")===k).length+centralPart.filter(h=>(h.kind||"Home")===k).length;
   const sucCnt=k=>arr.filter(h=>(h.kind||"Home")===k&&isSuccessHome(h)).length;
-  /* Guest มาทั้งหมด = นับ "มา" (ติ๊ก) จริง เฉพาะอีเวนต์ที่เกิดไปแล้ว (arrived) ที่ไม่ใช่ Call Out
-     = งานตัวเอง (แขกที่มาทั้งหมด) + งานส่วนกลาง (Landmark) ที่ตัวเองเป็นผู้เชิญ */
+  /* Guest / ลงทะเบียน — นับตาม "ผู้เชิญ" เป็นหลัก: ถ้าระบุผู้เชิญ → นับให้ผู้เชิญ, ถ้าไม่ระบุ → นับให้ Host (เจ้าของงาน)
+     เฉพาะที่ติ๊ก "มา"/"ลงทะเบียน" ในงานที่เกิดไปแล้ว (arrived) · Guest ไม่นับ Call Out · ลงทะเบียนนับทุกช่องทาง */
   const homeById={}; homes.forEach(h=>homeById[h.id]=h);
-  const guestOwn=arr.filter(h=>(h.kind||"Home")!=="Call Out").reduce((n,h)=>{ const att=(guests||[]).filter(g=>g.home_id===h.id&&g.attended).length; return n+Math.max(att,h.result_g||0); },0);
-  const guestCentral=hn?(guests||[]).filter(g=>{ const h=homeById[g.home_id]; return h&&g.attended&&isCentral(h)&&nrm(h.host_name)!==key&&arrived(h)&&(h.kind||"Home")!=="Call Out"&&(g.inviter||"").trim().toLowerCase()===hn; }).length:0;
-  const guest=guestOwn+guestCentral;
-  /* ลงทะเบียน (ทุกช่องทาง) = งานตัวเอง (result_r) + ที่ตัวเองเชิญในงานส่วนกลางที่เกิดไปแล้ว และติ๊กลงทะเบียน */
-  const regCentral=hn?(guests||[]).filter(g=>{ const h=homeById[g.home_id]; return h&&g.registered&&isCentral(h)&&nrm(h.host_name)!==key&&arrived(h)&&(g.inviter||"").trim().toLowerCase()===hn; }).length:0;
-  const reg=arr.reduce((n,h)=>n+(h.result_r||0),0)+regCentral;
+  const gList=guests||[];
+  const hasIndiv=(hid)=>gList.some(g=>g.home_id===hid);
+  const mineFor=(g,h)=>{ const inv=(g.inviter||"").trim().toLowerCase(); return inv ? (inv===hn) : (nrm(h.host_name)===key); };
+  let guest=0, reg=0;
+  gList.forEach(g=>{ const h=homeById[g.home_id]; if(!h||!arrived(h)||!mineFor(g,h)) return;
+    if(g.attended && (h.kind||"Home")!=="Call Out") guest++;
+    if(g.registered) reg++; });
+  /* งานของตัวเองที่ยังไม่มีรายชื่อรายคน (กรอกผลรวมเอง) — นับผลรวมให้ Host */
+  arr.forEach(h=>{ if(hasIndiv(h.id)) return; if((h.kind||"Home")!=="Call Out") guest+=(h.result_g||0); reg+=(h.result_r||0); });
   const orgSuccess=arr.filter(h=>(h.kind||"Home")==="Home"&&isSuccessHome(h)).length;
   const c1=orgSuccess>=CRIT_ORG, c2=guest>=CRIT_GUEST, c3=reg>=CRIT_REG;
   return { name:hostName, total:mine.length+centralPart.length, home:cnt("Home"), homeSuccess:sucCnt("Home"),
