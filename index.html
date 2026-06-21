@@ -1181,10 +1181,16 @@ function BoardView({homes, signups, guests, db, onChange, toast, onCreate}){
 
 function ArchiveView({homes, signups, guests, db, onChange, toast}){
   const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null);
+  const [fHost,setFHost]=useState(""); const [fKind,setFKind]=useState(""); const [q,setQ]=useState("");
   const past=homes.filter(isArchived).sort((a,b)=>b.event_date.localeCompare(a.event_date));
   const totalHelpers=past.reduce((n,h)=>n+signups.filter(s=>s.home_id===h.id).length,0);
   const done=past.filter(h=>h.completed);
   const sumG=done.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0), sumR=done.reduce((n,h)=>n+(h.result_r||0),0);
+  const hostNames=Array.from(new Set(past.map(h=>h.host_name))).sort();
+  const qq=q.trim().toLowerCase();
+  const rows=past.filter(h=>{ if(fHost&&h.host_name!==fHost) return false; if(fKind&&(h.kind||"Home")!==fKind) return false;
+    if(qq){ const hay=((h.title||"")+" "+(h.host_name||"")).toLowerCase(); if(!hay.includes(qq)) return false; } return true; });
+  const active=fHost||fKind||q;
   return (
     <div className="wrap page">
       <div className="sec-h"><div><div className="eyebrow">Achieve · งานที่ผ่านมา</div>
@@ -1193,36 +1199,44 @@ function ArchiveView({homes, signups, guests, db, onChange, toast}){
       {past.length===0
         ? <div className="empty"><div className="big"><SVG d={I.trophy} size={26}/></div><h3>ยังไม่มีงานที่ผ่านมา</h3>
             <p>เมื่อเลยวันงาน หรือผู้จัดติ๊ก “จบงาน” แล้ว งานจะย้ายมาเก็บที่นี่อัตโนมัติ พร้อมรายชื่อคนที่มาช่วยและผล G/R</p></div>
-        : <div className="deck">
-            {past.map(h=>{ const list=signups.filter(s=>s.home_id===h.id); const {day,mo,dow}=fmtDate(h.event_date);
-              return (
-                <div className="card past" key={h.id} id={"home-"+h.id}>
-                  <div className="card-top">
-                    <span className="ribbon done">{h.completed?<><SVG d={I.trophy} size={12}/> สำเร็จ</>:"เลยวันแล้ว"}</span>
-                    <div className="datebig"><span className="d">{day}</span><span className="mo">{mo}</span></div>
-                    <div className="dow">{dow}</div>
-                    <div className="ctitle">{h.title||h.host_name}</div>
-                    <div className="badges"><KindBadge kind={h.kind}/><ChannelBadge channel={h.channel}/>{h.completed && resultText(h) && <span className="badge result"><SVG d={I.flag} size={11}/>{resultText(h)}</span>}</div>
-                    <div className="host"><span className="ava">{initials(h.host_name)}</span><span className="lbl">ผู้จัด ·&nbsp;</span><b style={{fontWeight:600}}>{h.host_name}</b></div>
-                    <HomeInfo home={h}/>
-                  </div>
-                  <div className="capbar-wrap"><div className="capbar-head"><span>มาช่วยจริง</span><span><b>{list.length}</b> คน</span></div></div>
-                  {db
-                    ? <ArchiveAssists home={h} list={list} db={db} onChange={onChange} toast={toast} />
-                    : <div className="assists">
-                        {list.length===0?<div className="empty-assist">ไม่มีผู้ลงชื่อ</div>
-                          :list.map(s=>(<div className="arow" key={s.id}><span className="ava">{initials(s.assist_name)}</span><span className="nm">{s.assist_name}</span></div>))}
-                      </div>}
-                  {db && <div className="card-foot" style={{paddingTop:0,display:"flex",gap:8}}>
-                    <button className="btn btn-ghost btn-sm" style={{flex:1,justifyContent:"center"}} onClick={()=>setGuestFor(h)}>
-                      <SVG d={I.users} size={15}/>{(h.kind||"Home")==="Call Out"?"ติดต่อ":"แขก"}{(()=>{const gl=(guests||[]).filter(g=>g.home_id===h.id);const cl=(h.kind||"Home")==="Call Out";return gl.length?(cl?` · ${gl.length} · ${gl.filter(x=>x.registered).length}R`:` · ${gl.filter(x=>x.attended).length}G ${gl.filter(x=>x.registered).length}R`):"";})()}</button>
-                    <button className="btn btn-sm" onClick={()=>setEditFor(h)}><SVG d={I.cal} size={14}/>แก้ไข</button>
-                    <a className="btn btn-sm share-ic" title="เพิ่มลง Google Calendar" href={gcalUrl(h)} target="_blank" rel="noopener noreferrer"><SVG d={I.cal} size={15}/></a>
-                    <button className="btn btn-sm share-ic" title="คัดลอกลิงก์แชร์การ์ดนี้" onClick={()=>shareHome(h,toast)}><SVG d={I.share} size={15}/></button>
-                  </div>}
-                </div>
-              ); })}
-          </div>}
+        : <>
+          <div className="filterbar" style={{marginBottom:14}}>
+            <div className="field"><label><SVG d={I.search} size={13}/>ค้นหา งาน/ผู้จัด</label>
+              <input className="inp" value={q} placeholder="พิมพ์คำค้น" onChange={e=>setQ(e.target.value)} /></div>
+            <div className="field"><label><SVG d={I.user} size={13}/>ผู้จัด</label>
+              <select className="sel" value={fHost} onChange={e=>setFHost(e.target.value)}>
+                <option value="">— ทุกคน —</option>{hostNames.map(n=><option key={n} value={n}>{n}</option>)}</select></div>
+            <div className="field"><label><SVG d={I.cal} size={13}/>ประเภท Event</label>
+              <select className="sel" value={fKind} onChange={e=>setFKind(e.target.value)}>
+                <option value="">— ทุกประเภท —</option>{KINDS.map(k=><option key={k} value={k}>{k}</option>)}</select></div>
+            <div className="res">แสดง <b>{rows.length}</b> / {past.length} งาน</div>
+            {active && <button className="btn btn-sm" onClick={()=>{setFHost("");setFKind("");setQ("");}}><SVG d={I.x} size={14}/>ล้าง</button>}
+          </div>
+          {rows.length===0 ? <div className="empty-assist">ไม่พบงานตามตัวกรอง</div> :
+            <div className="panel" style={{padding:0,overflow:"hidden"}}><div className="gwrap" style={{maxHeight:"none"}}>
+              <table className="sumtbl">
+                <thead><tr><th>วันที่</th><th>ประเภท</th><th>งาน</th><th>ผู้จัด</th><th>กลุ่ม</th><th>ผล (G/R)</th><th>มาช่วย</th><th>สถานะ</th><th></th></tr></thead>
+                <tbody>
+                  {rows.map(h=>{ const {day,mo}=fmtDate(h.event_date); const list=signups.filter(s=>s.home_id===h.id); const k=h.kind||"Home"; const m=KIND_META[k]||KIND_META.Home; const gl=(guests||[]).filter(g=>g.home_id===h.id); const isCall=k==="Call Out"; const win=k==="Home"&&isSuccessHome(h);
+                    return (
+                      <tr key={h.id} id={"home-"+h.id}>
+                        <td style={{whiteSpace:"nowrap"}}>{day} {mo}</td>
+                        <td><span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11.5,fontWeight:700,color:m.fg}}><SVG d={m.icon} size={12}/>{k}</span></td>
+                        <td style={{fontWeight:600}}>{win&&<span title="Home สำเร็จ">🏆 </span>}{h.title||<span style={{color:"var(--muted)"}}>—</span>}</td>
+                        <td style={{whiteSpace:"nowrap"}}>{h.host_name}</td>
+                        <td style={{whiteSpace:"nowrap",color:"var(--muted)"}}>{h.host_group?("กลุ่ม "+h.host_group):"—"}</td>
+                        <td style={{whiteSpace:"nowrap"}}>{h.completed?(resultText(h)||"—"):<span style={{color:"var(--muted)"}}>ยังไม่จบ</span>}</td>
+                        <td style={{textAlign:"center"}}>{list.length?<span title={list.map(s=>s.assist_name).join(", ")}>{list.length} คน</span>:<span style={{color:"var(--muted)"}}>—</span>}</td>
+                        <td>{h.completed?<span className="ipill yes">สำเร็จ</span>:<span style={{color:"var(--muted)"}}>เลยวัน</span>}</td>
+                        <td style={{whiteSpace:"nowrap"}}>
+                          <button className="btn btn-sm btn-amber" onClick={()=>setGuestFor(h)}><SVG d={I.users} size={13}/>{isCall?"ติดต่อ":"แขก"}{gl.length?(isCall?` ${gl.length}`:` ${gl.filter(x=>x.attended).length}G ${gl.filter(x=>x.registered).length}R`):""}</button>
+                          {db && <button className="btn btn-sm" onClick={()=>setEditFor(h)} style={{marginLeft:6}}><SVG d={I.cal} size={13}/>แก้ไข</button>}
+                        </td>
+                      </tr>); })}
+                </tbody>
+              </table>
+            </div></div>}
+        </>}
       {guestFor && <GuestModal home={guestFor} guests={guests||[]} homes={homes} db={db} onChange={onChange} toast={toast} onClose={()=>setGuestFor(null)} />}
       {editFor && <CreateModal home={editFor} db={db} onChange={onChange} toast={toast} onClose={()=>setEditFor(null)} />}
     </div>
