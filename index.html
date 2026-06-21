@@ -1784,18 +1784,20 @@ const isSuccessHome=(h)=> (h.result_g||0)>=MIN_GUEST && (h.result_r||0)*4>=(h.re
 function critStats(homes, hostName, guests){
   const key=nrm(hostName); const mine=homes.filter(h=>nrm(h.host_name)===key);
   const arr=mine.filter(arrived); /* นับ Guest/ลงทะเบียน/สำเร็จ เฉพาะงานที่ถึงวันแล้ว */
-  const cnt=k=>mine.filter(h=>(h.kind||"Home")===k).length;
+  const hn=(hostName||"").trim().toLowerCase();
+  /* อีเวนต์ส่วนกลาง (Landmark) ที่ตัวเองร่วม (เป็นผู้เชิญ ≥1 คน) และผ่านไปแล้ว — นับรวมในสถิติกิจกรรม */
+  const centralPart=hn?homes.filter(h=>isCentral(h)&&nrm(h.host_name)!==key&&arrived(h)&&(guests||[]).some(g=>g.home_id===h.id&&(g.inviter||"").trim().toLowerCase()===hn)):[];
+  const cnt=k=>mine.filter(h=>(h.kind||"Home")===k).length+centralPart.filter(h=>(h.kind||"Home")===k).length;
   const sucCnt=k=>arr.filter(h=>(h.kind||"Home")===k&&isSuccessHome(h)).length;
   const guestOwn=arr.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0);
   /* + Guest ที่ตัวเองเป็นผู้เชิญ ในอีเวนต์ส่วนกลาง (Landmark) และติ๊กว่า "มา" (นับตามการติ๊กมา ไม่ขึ้นกับวันที่) */
-  const hn=(hostName||"").trim().toLowerCase();
   const centralIds=new Set(homes.filter(h=>isCentral(h)&&nrm(h.host_name)!==key).map(h=>h.id));
   const guestCentral=hn?(guests||[]).filter(g=>g.attended&&centralIds.has(g.home_id)&&(g.inviter||"").trim().toLowerCase()===hn).length:0;
   const guest=guestOwn+guestCentral;
   const reg=arr.reduce((n,h)=>n+(h.result_r||0),0);
   const orgSuccess=arr.filter(h=>(h.kind||"Home")==="Home"&&isSuccessHome(h)).length;
   const c1=orgSuccess>=CRIT_ORG, c2=guest>=CRIT_GUEST, c3=reg>=CRIT_REG;
-  return { name:hostName, total:mine.length, home:cnt("Home"), homeSuccess:sucCnt("Home"),
+  return { name:hostName, total:mine.length+centralPart.length, home:cnt("Home"), homeSuccess:sucCnt("Home"),
     center:cnt("Center Intro"), evening:cnt("Evening Session"), call:cnt("Call Out"),
     orgSuccess, guest, reg, c1, c2, c3, passed:(c1?1:0)+(c2?1:0)+(c3?1:0) };
 }
