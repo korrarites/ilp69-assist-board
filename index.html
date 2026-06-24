@@ -1729,6 +1729,7 @@ function goalData(homes, guests, host){
   (guests||[]).forEach(g=>{ const h=homeById[g.home_id]; if(!h) return; const inv=(g.inviter||"").trim().toLowerCase();
     const mine = inv ? inv===hn : nrm(h.host_name)===key; if(!mine) return;
     eventDates.add(h.event_date); const ci=colIdx(h.event_date); if(ci<0) return; const k=h.kind||"Home";
+    if(!arrived(h)) return; /* Actual นับเฉพาะงานที่ผ่านวันมาแล้ว — ไม่รวมงานอนาคต */
     if(g.attended){ const gr=rowOfGuest(k); if(gr) actual[gr][ci]++; }
     if(g.registered){ if(k==="Call Out") actual.co[ci]++; else actual.reg[ci]++; } });
   const ownHomes=homes.filter(h=>nrm(h.host_name)===key);
@@ -1868,7 +1869,10 @@ function HostView({homes, signups, guests, weeklies, progress, goals, db, onChan
   const hostNames=Array.from(new Set(homes.map(h=>h.host_name))).sort();
   const mine=q?homes.filter(h=>h.host_name===q).sort((a,b)=>a.event_date.localeCompare(b.event_date)):[];
   /* การ์ดที่แสดงในมุมมอง Host = งานของตัวเอง + งานส่วนกลาง (Landmark) ของทุกคน */
-  const cards=q?[...mine, ...homes.filter(h=>isCentral(h)&&h.host_name!==q)].sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||"")):[];
+  /* การ์ดส่วนกลาง (Landmark) จะขึ้นในมุมมองของคนนั้น เฉพาะงานที่คนนั้นเป็น "ผู้เชิญ" แขก */
+  const qhn=(q||"").trim().toLowerCase();
+  const central=q?homes.filter(h=>isCentral(h)&&h.host_name!==q&&(guests||[]).some(g=>g.home_id===h.id&&(g.inviter||"").trim().toLowerCase()===qhn)):[];
+  const cards=q?[...mine, ...central].sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||"")):[];
   const del=async(h)=>{ if(!window.confirm("ลบงานวันที่ "+h.event_date+" ของ "+h.host_name+"? รายชื่อที่ลงไว้จะถูกลบด้วย")) return;
     try{ await db.deleteHome(h.id); toast("ลบงานแล้ว"); onChange(); }catch(e){ toast("ลบไม่สำเร็จ: "+(e.message||e)); } };
   const reopen=async(h)=>{ try{ await db.updateHome(h.id,{completed:false}); toast("เปิดงานกลับมาแล้ว"); onChange(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); } };
