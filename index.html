@@ -906,10 +906,13 @@ function GuestRow({g, idx, db, onChange, toast, recount, list, isCall, evOpts}){
       <td><select className="selint" value={f.interested||""} onChange={e=>setInt(e.target.value)}>
         {INTEREST.map(o=><option key={o} value={o}>{o||"—"}</option>)}</select></td>
       <td><input value={f.whats_so||""} placeholder="What's so" onChange={e=>set("whats_so",e.target.value)} onBlur={()=>blur("whats_so")} /></td>
-      {isCall && <td><input value={f.age||""} placeholder="อายุ" style={{width:46}} onChange={e=>set("age",e.target.value)} onBlur={()=>blur("age")} /></td>}
-      {isCall && <td><input value={f.occupation||""} placeholder="อาชีพ" onChange={e=>set("occupation",e.target.value)} onBlur={()=>blur("occupation")} /></td>}
+      <td><input value={f.relationship||""} placeholder="ความสัมพันธ์" style={{width:90}} onChange={e=>set("relationship",e.target.value)} onBlur={()=>blur("relationship")} /></td>
+      <td><input value={f.age||""} placeholder="อายุ" style={{width:46}} onChange={e=>set("age",e.target.value)} onBlur={()=>blur("age")} /></td>
+      <td><input value={f.occupation||""} placeholder="อาชีพ" onChange={e=>set("occupation",e.target.value)} onBlur={()=>blur("occupation")} /></td>
       <td className="ctr"><input type="checkbox" checked={!!f.attended} onChange={toggleAtt} title="มา (นับเป็น Guest)" /></td>
       <td className="ctr"><input type="checkbox" checked={!!f.registered} onChange={toggleReg} title="ลงทะเบียน" /></td>
+      <td className="ctr"><input type="checkbox" checked={!!f.knows_schedule} onChange={()=>{const v=!f.knows_schedule;set("knows_schedule",v);persist({knows_schedule:v});}} title="ทราบรอบเรียน" /></td>
+      <td className="ctr"><input type="checkbox" checked={!!f.knows_fee} onChange={()=>{const v=!f.knows_fee;set("knows_fee",v);persist({knows_fee:v});}} title="ทราบค่าเรียน" /></td>
       {isCall && <td><select className="selint" value={f.call_status||""} onChange={e=>{set("call_status",e.target.value);persist({call_status:e.target.value||null});}}>
         <option value="">—</option>
         <option value="R">R = ลงทะเบียน</option>
@@ -1035,6 +1038,25 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
   const add=async()=>{ try{ await db.createGuest({home_id:home.id,guest_name:"",nickname:"",contact:"",contact_time:"",inviter:"",interested:"",whats_so:"",attended:false,registered:false,note:""});
     await recount([...list,{attended:false,registered:false}]); onChange(); }catch(e){ toast("เพิ่มไม่สำเร็จ: "+(e.message||e)); } };
   const saveHdr=async(patch)=>{ try{ await db.updateHome(home.id,patch); onChange(); }catch(e){} };
+  /* สร้างข้อความรายละเอียดเกสต์ แล้วคัดลอกลง Clipboard */
+  const buildGuestText=()=>{ const dateTxt=day+" "+mo;
+    const blocks=list.map((gg,i)=>{
+      return (i+1)+".ชื่อคนที่แบ่งปัน : "+(gg.inviter||"")+"\n"
+        +"ชื่อเล่นเกส : "+(gg.guest_name||gg.nickname||"")+"\n"
+        +"ความสัมพันธ์ : "+(gg.relationship||"")+"\n"
+        +"อายุ : "+(gg.age||"")+"\n"
+        +"อาชีพ : "+(gg.occupation||"")+"\n"
+        +"ความสนใจ : "+(gg.whats_so||gg.interested||"")+"\n"
+        +"เบอร์โทร : "+(gg.contact||"")+"\n"
+        +"วันที่เข้าฟัง : "+dateTxt+"\n"
+        +"ทราบรอบเรียน : "+(gg.knows_schedule?"ทราบแล้ว":"")+"\n"
+        +"ทราบค่าเรียน : "+(gg.knows_fee?"ทราบแล้ว":"");
+    });
+    return "รายละเอียดเกสต์ 👨‍❤️‍💋‍👨\n"+blocks.join("\n\n")+"\n===============";
+  };
+  const copyGuestText=async()=>{ const txt=buildGuestText();
+    try{ await navigator.clipboard.writeText(txt); toast("คัดลอกข้อความเรียบร้อย ✦ นำไปวางต่อได้เลย"); }
+    catch(e){ try{ window.prompt("คัดลอกข้อความนี้:", txt); }catch(_){ toast("คัดลอกไม่สำเร็จ"); } } };
   const finish=async()=>{ setBusy(true); try{ await db.updateHome(home.id,{completed:true,result_g:G,result_r:R});
       toast("บันทึก & จบงานแล้ว → Achieve ("+(isCall?G+" ติดต่อ · "+R+"R":G+"G "+R+"R")+")"); onChange(); onClose(); }catch(e){ toast("ไม่สำเร็จ: "+(e.message||e)); setBusy(false); } };
   return (
@@ -1065,18 +1087,21 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
             <table className="gtbl">
               <thead><tr>
                 <th className="num">No.</th><th>ชื่อแขก</th><th>ชื่อเล่น</th><th>เบอร์ติดต่อ</th><th>เวลาสะดวกติดต่อ</th>
-                <th>ผู้เชิญ</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th>{isCall&&<><th>อายุ</th><th>อาชีพ</th></>}<th className="ctr">มา</th><th className="ctr">ลงทะเบียน</th>{isCall&&<><th className="ctr">R/L/P/Gst</th><th className="ctr">CF</th><th>วันที่อีเวนท์</th></>}<th>หมายเหตุ</th><th></th>
+                <th>ผู้เชิญ</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th>ความสัมพันธ์</th><th>อายุ</th><th>อาชีพ</th><th className="ctr">มา</th><th className="ctr">ลงทะเบียน</th><th className="ctr">ทราบรอบเรียน</th><th className="ctr">ทราบค่าเรียน</th>{isCall&&<><th className="ctr">R/L/P/Gst</th><th className="ctr">CF</th><th>วันที่อีเวนท์</th></>}<th>หมายเหตุ</th><th></th>
               </tr></thead>
               <tbody>
                 {list.length===0
-                  ? <tr><td colSpan={isCall?17:12} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
+                  ? <tr><td colSpan={isCall?20:17} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
                   : list.map((g,i)=><GuestRow key={g.id} g={g} idx={i} db={db} onChange={onChange} toast={toast} recount={recount} list={list} isCall={isCall} evOpts={evOpts} />)}
               </tbody>
             </table>
           </div>
           <div className="note" style={{padding:"8px 11px",marginTop:10,fontSize:12.5}}>หมายเหตุ: หากระบุ “สนใจ / ไม่สนใจ” ในแต่ละรายชื่อ จะนับเป็น <b>จำนวนคนที่ได้แบ่งปันไปแล้ว</b></div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,flexWrap:"wrap",gap:10}}>
-            <button className="btn btn-sm" onClick={add}><SVG d={I.plus} size={15}/>{isCall?"เพิ่มรายชื่อ":"เพิ่มแขก"}</button>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button className="btn btn-sm" onClick={add}><SVG d={I.plus} size={15}/>{isCall?"เพิ่มรายชื่อ":"เพิ่มแขก"}</button>
+              <button className="btn btn-sm btn-amber" disabled={total===0} onClick={copyGuestText} title="คัดลอกข้อความรายละเอียดเกสต์ลง Clipboard"><SVG d={I.share} size={14}/>คัดลอกรายละเอียดเกสต์</button>
+            </div>
             <div className="lead-sub">{isCall?<>รวม <b>{total}</b> ติดต่อ</>:<>รายชื่อ <b>{total}</b> · มา <b>{came}</b> (=Guest)</>} · ลงทะเบียน <b>{R}</b> · สนใจ {list.filter(g=>g.interested==="สนใจ").length} · ไม่สนใจ {list.filter(g=>g.interested==="ไม่สนใจ").length}</div>
           </div>
           <div style={{marginTop:18,borderTop:"1px dashed var(--line)",paddingTop:16}}>
