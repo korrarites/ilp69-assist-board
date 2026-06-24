@@ -2073,12 +2073,15 @@ function DashboardView({homes, signups, guests}){
   signups.forEach(s=>{ const k=nrm(s.assist_name); const o=assistMap[k]||(assistMap[k]={name:k,count:0,homeIds:[]});
     o.count++; o.homeIds.push(s.home_id); });
   const assistRows=Object.values(assistMap);
-  /* ---- ยอดรวม ---- */
+  /* ---- ยอดรวม · นับ "คนที่มา/ลงทะเบียน" จากทุก Event ที่ผ่านวันมาแล้ว (arrived) ไม่ใช่แค่ที่ติ๊กจบงาน ---- */
   const doneHomes=homes.filter(h=>h.completed);
-  const totalG=doneHomes.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:(h.result_g||0)),0);
-  const totalR=doneHomes.reduce((n,h)=>n+(h.result_r||0),0);
-  /* ---- แยกตามประเภท (4 ชนิด) ---- */
-  const grOf=(arr)=>arr.reduce((o,h)=>(h.completed?{g:o.g+(h.result_g||0),r:o.r+(h.result_r||0),done:o.done+1}:o),{g:0,r:0,done:0});
+  const pastHomes=homes.filter(arrived);
+  const attOf=(h)=>{ const ind=(guests||[]).filter(g=>g.home_id===h.id&&g.attended).length; return Math.max(ind, h.result_g||0); };
+  const regOf=(h)=>{ const ind=(guests||[]).filter(g=>g.home_id===h.id&&g.registered).length; return Math.max(ind, h.result_r||0); };
+  const totalG=pastHomes.reduce((n,h)=>n+((h.kind||"Home")==="Call Out"?0:attOf(h)),0);
+  const totalR=pastHomes.reduce((n,h)=>n+regOf(h),0);
+  /* ---- แยกตามประเภท (4 ชนิด) — Guest/Reg จากงานที่ผ่านมาแล้ว ---- */
+  const grOf=(arr)=>arr.reduce((o,h)=>(arrived(h)?{g:o.g+((h.kind||"Home")==="Call Out"?0:attOf(h)),r:o.r+regOf(h),done:o.done+1}:o),{g:0,r:0,done:0});
   const kindStats=KINDS.map(k=>{ const items=homes.filter(h=>(h.kind||"Home")===k); return {kind:k, count:items.length, gr:grOf(items)}; });
   /* ---- เกณฑ์รายคน (ทุกคนที่เคยจัดงาน) ---- */
   const critList=Object.keys(hostMap).map(n=>critStats(homes,n,guests)).sort((a,b)=>b.passed-a.passed||b.orgSuccess-a.orgSuccess||b.guest-a.guest);
@@ -2106,8 +2109,8 @@ function DashboardView({homes, signups, guests}){
         <p>สถิติสะสมจากทุกงานในระบบ · กดดูรายบุคคลได้ที่ช่องค้นหาด้านล่าง</p></div></div>
       <div className="statgrid">
         <div className="stat"><div className="k"><SVG d={I.cal} size={15}/>งานทั้งหมด</div><div className="v">{homes.length}</div><div className="s">จบแล้ว {doneHomes.length} · กำลังจะถึง {homes.length-doneHomes.length}</div></div>
-        <div className="stat amber"><div className="k"><SVG d={I.users} size={15}/>Guest (แขกที่มา)</div><div className="v">{totalG}</div><div className="s">งานที่จบแล้ว · ไม่รวม Call Out</div></div>
-        <div className="stat green"><div className="k"><SVG d={I.flag} size={15}/>Register (ลงทะเบียน)</div><div className="v">{totalR}</div><div className="s">รวมจากงานที่จบแล้ว</div></div>
+        <div className="stat amber"><div className="k"><SVG d={I.users} size={15}/>Guest (แขกที่มา)</div><div className="v">{totalG}</div><div className="s">ทุกงานที่ผ่านมาแล้ว · ไม่รวม Call Out</div></div>
+        <div className="stat green"><div className="k"><SVG d={I.flag} size={15}/>Register (ลงทะเบียน)</div><div className="v">{totalR}</div><div className="s">รวมจากงานที่ผ่านมาแล้ว</div></div>
         <div className="stat"><div className="k"><SVG d={I.user} size={15}/>ผู้จัดงาน</div><div className="v">{hostRows.length}</div><div className="s">คนที่เคยเปิดงาน</div></div>
         <div className="stat"><div className="k"><SVG d={I.star} size={15}/>การลงชื่อ Assist</div><div className="v">{signups.length}</div><div className="s">{assistRows.length} คนไม่ซ้ำ</div></div>
       </div>
@@ -2119,7 +2122,7 @@ function DashboardView({homes, signups, guests}){
             <div className="stat" key={ks.kind} style={{background:m.bg}}>
               <div className="k"><SVG d={m.icon} size={15}/>งาน {ks.kind}</div>
               <div className="v" style={{color:m.fg}}>{ks.count}</div>
-              <div className="s">จบแล้ว {ks.gr.done} · <b>{ks.gr.g}</b> {isC?"ติดต่อ":"Guest"} · <b>{ks.gr.r}</b> Reg{isC?<span style={{opacity:.7}}> (ไม่นับ G)</span>:""}</div>
+              <div className="s">ผ่านแล้ว {ks.gr.done} · <b>{ks.gr.g}</b> {isC?"ติดต่อ":"Guest"} · <b>{ks.gr.r}</b> Reg{isC?<span style={{opacity:.7}}> (ไม่นับ G)</span>:""}</div>
             </div>); })}
       </div>
 
