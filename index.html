@@ -906,6 +906,7 @@ function GuestRow({g, idx, db, onChange, toast, recount, list, isCall, evOpts}){
       <td><select className="selint" value={f.interested||""} onChange={e=>setInt(e.target.value)}>
         {INTEREST.map(o=><option key={o} value={o}>{o||"—"}</option>)}</select></td>
       <td><input value={f.whats_so||""} placeholder="What's so" onChange={e=>set("whats_so",e.target.value)} onBlur={()=>blur("whats_so")} /></td>
+      <td><input value={f.interest||""} placeholder="ความสนใจ" style={{width:130}} onChange={e=>set("interest",e.target.value)} onBlur={()=>blur("interest")} /></td>
       <td><input value={f.relationship||""} placeholder="ความสัมพันธ์" style={{width:90}} onChange={e=>set("relationship",e.target.value)} onBlur={()=>blur("relationship")} /></td>
       <td><input value={f.age||""} placeholder="อายุ" style={{width:46}} onChange={e=>set("age",e.target.value)} onBlur={()=>blur("age")} /></td>
       <td><input value={f.occupation||""} placeholder="อาชีพ" onChange={e=>set("occupation",e.target.value)} onBlur={()=>blur("occupation")} /></td>
@@ -1046,7 +1047,7 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
         +"ความสัมพันธ์ : "+(gg.relationship||"")+"\n"
         +"อายุ : "+(gg.age||"")+"\n"
         +"อาชีพ : "+(gg.occupation||"")+"\n"
-        +"ความสนใจ : "+(gg.whats_so||gg.interested||"")+"\n"
+        +"ความสนใจ : "+(gg.interest||"")+"\n"
         +"เบอร์โทร : "+(gg.contact||"")+"\n"
         +"วันที่เข้าฟัง : "+dateTxt+"\n"
         +"ทราบรอบเรียน : "+(gg.knows_schedule?"ทราบแล้ว":"")+"\n"
@@ -1087,11 +1088,11 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
             <table className="gtbl">
               <thead><tr>
                 <th className="num">No.</th><th>ชื่อแขก</th><th>ชื่อเล่น</th><th>เบอร์ติดต่อ</th><th>เวลาสะดวกติดต่อ</th>
-                <th>ผู้เชิญ</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th>ความสัมพันธ์</th><th>อายุ</th><th>อาชีพ</th><th className="ctr">มา</th><th className="ctr">ลงทะเบียน</th><th className="ctr">ทราบรอบเรียน</th><th className="ctr">ทราบค่าเรียน</th>{isCall&&<><th className="ctr">R/L/P/Gst</th><th className="ctr">CF</th><th>วันที่อีเวนท์</th></>}<th>หมายเหตุ</th><th></th>
+                <th>ผู้เชิญ</th><th>สนใจ/ไม่สนใจ</th><th>What's so</th><th>ความสนใจ</th><th>ความสัมพันธ์</th><th>อายุ</th><th>อาชีพ</th><th className="ctr">มา</th><th className="ctr">ลงทะเบียน</th><th className="ctr">ทราบรอบเรียน</th><th className="ctr">ทราบค่าเรียน</th>{isCall&&<><th className="ctr">R/L/P/Gst</th><th className="ctr">CF</th><th>วันที่อีเวนท์</th></>}<th>หมายเหตุ</th><th></th>
               </tr></thead>
               <tbody>
                 {list.length===0
-                  ? <tr><td colSpan={isCall?20:17} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
+                  ? <tr><td colSpan={isCall?21:18} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
                   : list.map((g,i)=><GuestRow key={g.id} g={g} idx={i} db={db} onChange={onChange} toast={toast} recount={recount} list={list} isCall={isCall} evOpts={evOpts} />)}
               </tbody>
             </table>
