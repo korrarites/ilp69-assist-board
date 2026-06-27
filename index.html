@@ -1580,26 +1580,30 @@ function beDate(s, full){ if(!s) return ""; const d=new Date(s+"T00:00:00"); con
 const PROG_HEAD=[{k:"no_id",label:"NO เลขที่"},{k:"cohort",label:"รุ่น"},{k:"il_coach",label:"IL COACH โค้ชไอแอล"},{k:"staff_coach",label:"STAFF COACH โค้ชสตาฟ"},{k:"nickname",label:"NICKNAME ชื่อเล่น"},{k:"name",label:"NAME ชื่อ"}];
 const PROG_NRM=(s)=>(s||"").trim().replace(/\s+/g," ");
 function progressData(homes, guests, host, ps, pe){
-  const key=PROG_NRM(host); const hostHomes=(homes||[]).filter(h=>PROG_NRM(h.host_name)===key);
-  const homeById={}; hostHomes.forEach(h=>homeById[h.id]=h);
-  const myGuests=(guests||[]).filter(g=>homeById[g.home_id]);
+  const key=PROG_NRM(host); const hn=(host||"").trim().toLowerCase();
+  const homeById={}; (homes||[]).forEach(h=>homeById[h.id]=h);
+  const hostHomes=(homes||[]).filter(h=>PROG_NRM(h.host_name)===key);
   const inP=(d)=> !!d && (!ps||d>=ps) && (!pe||d<=pe);
   const SRC={"Home":"HI","Center Intro":"CI","Evening Session":"ES","Call Out":"Per C/O"};
   const isReg=(g,h)=> (h.kind||"Home")==="Call Out" ? (g.call_status==="R"||!!g.registered) : !!g.registered;
-  const guestRows=myGuests.filter(g=>{const h=homeById[g.home_id];const k=h.kind||"Home";return g.attended&&k!=="Call Out"&&inP(h.event_date);})
+  /* ยึด "ผู้เชิญ" เป็นหลัก ถ้าไม่มีผู้เชิญ → นับให้ Host (เหมือนสถิติส่วนตัว) */
+  const mineFor=(g,h)=>{ const inv=(g.inviter||"").trim().toLowerCase(); return inv ? (inv===hn) : (PROG_NRM(h.host_name)===key); };
+  const myGuests=(guests||[]).filter(g=>{ const h=homeById[g.home_id]; return h && mineFor(g,h); });
+  const guestRows=myGuests.filter(g=>{const h=homeById[g.home_id];const k=h.kind||"Home";return g.attended&&k!=="Call Out"&&arrived(h)&&inP(h.event_date);})
     .map(g=>{const h=homeById[g.home_id];return {name:(g.guest_name||g.nickname||"-"),src:SRC[h.kind||"Home"],date:h.event_date};})
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-  const regRows=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h)&&inP(h.event_date);})
+  const regRows=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h)&&arrived(h)&&inP(h.event_date);})
     .map(g=>{const h=homeById[g.home_id];const k=h.kind||"Home";return {name:(g.guest_name||g.nickname||"-"),src:SRC[k],date:h.event_date};})
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   const callOuts=hostHomes.filter(h=>(h.kind||"Home")==="Call Out").sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||""));
   const callRows=callOuts.map((h,i)=>({no:(h.co_session!=null&&h.co_session!=="")?h.co_session:"",date:h.event_date,time:h.time_slot})).filter(r=>inP(r.date));
   const assistCount=callOuts.length;
-  const totalGuests=myGuests.filter(g=>{const h=homeById[g.home_id];return g.attended&&(h.kind||"Home")!=="Call Out"&&arrived(h);}).length;
-  const totalReg=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h)&&arrived(h);}).length;
+  /* ยอดรวม Guest/ลงทะเบียน = ใช้สูตรเดียวกับสถิติส่วนตัว ให้ตรงกันเสมอ */
+  const cs=critStats(homes, host, guests);
+  const totalGuests=cs.guest, totalReg=cs.reg;
   const homeIntroSuccess=hostHomes.filter(h=>(h.kind||"Home")==="Home").filter(h=>{
     if(!arrived(h)) return false; /* นับเฉพาะที่เกิดขึ้นแล้ว ไม่นับอนาคต */
-    const att=myGuests.filter(g=>g.home_id===h.id&&g.attended).length; return Math.max(att,h.result_g||0)>=MIN_GUEST; }).length;
+    const att=(guests||[]).filter(g=>g.home_id===h.id&&g.attended).length; return Math.max(att,h.result_g||0)>=MIN_GUEST; }).length;
   return {guestRows, regRows, callRows, assistCount, totalGuests, totalReg, homeIntroSuccess};
 }
 function ProgressReport({rep, data, onClose}){
