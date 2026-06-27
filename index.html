@@ -1589,14 +1589,15 @@ function progressData(homes, guests, host, ps, pe){
   /* ยึด "ผู้เชิญ" เป็นหลัก ถ้าไม่มีผู้เชิญ → นับให้ Host (เหมือนสถิติส่วนตัว) */
   const mineFor=(g,h)=>{ const inv=(g.inviter||"").trim().toLowerCase(); return inv ? (inv===hn) : (PROG_NRM(h.host_name)===key); };
   const myGuests=(guests||[]).filter(g=>{ const h=homeById[g.home_id]; return h && mineFor(g,h); });
-  const guestRows=myGuests.filter(g=>{const h=homeById[g.home_id];const k=h.kind||"Home";return g.attended&&k!=="Call Out"&&arrived(h)&&inP(h.event_date);})
+  /* รายชื่อในรายงาน = สะสมทั้งหมด (ที่เกิดแล้ว) ให้ตรงกับยอดรวม — ฟอร์ม Landmark เป็นแบบสะสม */
+  const guestRows=myGuests.filter(g=>{const h=homeById[g.home_id];const k=h.kind||"Home";return g.attended&&k!=="Call Out"&&arrived(h);})
     .map(g=>{const h=homeById[g.home_id];return {name:(g.guest_name||g.nickname||"-"),src:SRC[h.kind||"Home"],date:h.event_date};})
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-  const regRows=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h)&&arrived(h)&&inP(h.event_date);})
+  const regRows=myGuests.filter(g=>{const h=homeById[g.home_id];return isReg(g,h)&&arrived(h);})
     .map(g=>{const h=homeById[g.home_id];const k=h.kind||"Home";return {name:(g.guest_name||g.nickname||"-"),src:SRC[k],date:h.event_date};})
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   const callOuts=hostHomes.filter(h=>(h.kind||"Home")==="Call Out").sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||""));
-  const callRows=callOuts.map((h,i)=>({no:(h.co_session!=null&&h.co_session!=="")?h.co_session:"",date:h.event_date,time:h.time_slot})).filter(r=>inP(r.date));
+  const callRows=callOuts.filter(h=>arrived(h)).map((h,i)=>({no:(h.co_session!=null&&h.co_session!=="")?h.co_session:"",date:h.event_date,time:h.time_slot}));
   const assistCount=callOuts.length;
   /* ยอดรวม Guest/ลงทะเบียน = ใช้สูตรเดียวกับสถิติส่วนตัว ให้ตรงกันเสมอ */
   const cs=critStats(homes, host, guests);
