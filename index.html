@@ -882,7 +882,7 @@ function CompleteModal({home, db, onChange, toast, onClose}){
 
 /* ===== guest detail form (ตามชีต “สรุปรายละเอียดแขก”) ===== */
 const INTEREST=["","สนใจ","ไม่สนใจ"];
-function GuestRow({g, idx, db, onChange, toast, recount, list, isCall, evOpts}){
+function GuestRow({g, idx, db, onChange, toast, recount, list, isCall, evOpts, onCopyToEvent}){
   const [f,setF]=useState(g);
   useEffect(()=>{ setF(g); },[g.id]);
   const set=(k,v)=>setF(s=>({...s,[k]:v}));
@@ -921,7 +921,8 @@ function GuestRow({g, idx, db, onChange, toast, recount, list, isCall, evOpts}){
         <option value="P">P = เป็นไปได้ ให้ลงทะเบียน/เข้าฟังการแนะนำ</option>
         <option value="Gst">Gst = แขกเข้าฟังการแนะนำ</option></select></td>}
       {isCall && <td><select className="selint" value={f.cf||""} onChange={e=>{set("cf",e.target.value);persist({cf:e.target.value||null});}}><option value="">—</option><option>รอ CF</option><option>CF</option></select></td>}
-      {isCall && <td><select className="selint" value={f.event_ref||""} onChange={e=>{set("event_ref",e.target.value);persist({event_ref:e.target.value||null});}}><option value="">— เลือกจากการ์ด —</option>{(evOpts||[]).map((o,i)=><option key={i} value={o.val}>{o.label}</option>)}{f.event_ref&&!(evOpts||[]).some(o=>o.val===f.event_ref)&&<option value={f.event_ref}>{f.event_ref}</option>}</select></td>}
+      {isCall && <td><div style={{display:"flex",alignItems:"center",gap:4}}><select className="selint" value={f.event_ref||""} onChange={e=>{set("event_ref",e.target.value);persist({event_ref:e.target.value||null});}}><option value="">— เลือกจากการ์ด —</option>{(evOpts||[]).map((o,i)=><option key={i} value={o.val}>{o.label}</option>)}{f.event_ref&&!(evOpts||[]).some(o=>o.val===f.event_ref)&&<option value={f.event_ref}>{f.event_ref}</option>}</select>
+        {f.event_ref && onCopyToEvent && <button className="btn btn-ghost" style={{padding:"2px 6px",fontSize:12,lineHeight:1.2,whiteSpace:"nowrap"}} title={"คัดลอกเกสต์นี้เข้า Event ที่เลือก ("+f.event_ref+")"} onClick={()=>onCopyToEvent(f)}>↩ ลง Event</button>}</div></td>}
       <td><input value={f.note||""} placeholder="หมายเหตุ" onChange={e=>set("note",e.target.value)} onBlur={()=>blur("note")} /></td>
       <td className="ctr"><button className="delg" title="ลบแถว" onClick={del}><SVG d={I.trash} size={15}/></button></td>
     </tr>
@@ -1039,6 +1040,20 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
   const add=async()=>{ try{ await db.createGuest({home_id:home.id,guest_name:"",nickname:"",contact:"",contact_time:"",inviter:"",interested:"",whats_so:"",attended:false,registered:false,note:""});
     await recount([...list,{attended:false,registered:false}]); onChange(); }catch(e){ toast("เพิ่มไม่สำเร็จ: "+(e.message||e)); } };
   const saveHdr=async(patch)=>{ try{ await db.updateHome(home.id,patch); onChange(); }catch(e){} };
+  /* คัดลอกเกสต์ Call Out เข้า Home/Event ที่เลือกไว้ (event_ref) — ทีละคน */
+  const copyGuestToEvent=async(g)=>{ const ref=(g.event_ref||"").trim();
+    if(!ref){ toast("เกสต์นี้ยังไม่ได้เลือก Event (ช่อง “เลือกจากการ์ด”)"); return; }
+    const ek=["Home","Center Intro","Evening Session"];
+    const targets=(homes||[]).filter(h=>nrm(h.host_name)===nrm(home.host_name)&&ek.includes(h.kind||"Home")&&((fmtDate(h.event_date).day+" "+fmtDate(h.event_date).mo)===ref));
+    if(!targets.length){ toast("ไม่พบ Event ที่ตรงกับ “"+ref+"” ของ "+home.host_name); return; }
+    const target=targets[0]; const gname=(g.guest_name||"").trim();
+    const dup=(guests||[]).some(x=>x.home_id===target.id && (x.guest_name||"").trim()===gname && gname!=="");
+    if(dup){ toast("มี “"+gname+"” ใน "+(target.kind||"Home")+" ("+ref+") อยู่แล้ว"); return; }
+    try{ await db.createGuest({home_id:target.id, guest_name:g.guest_name||"", nickname:g.nickname||"", contact:g.contact||"", contact_time:g.contact_time||"", inviter:g.inviter||"", interested:g.interested||"", whats_so:g.whats_so||"", relationship:g.relationship||"", interest:g.interest||"", age:g.age||"", occupation:g.occupation||"", attended:true, registered:!!g.registered, knows_schedule:!!g.knows_schedule, knows_fee:!!g.knows_fee, note:"↩ จาก Call Out"});
+      const tg=(guests||[]).filter(x=>x.home_id===target.id);
+      await db.updateHome(target.id,{result_g:tg.filter(x=>x.attended).length+1, result_r:tg.filter(x=>x.registered).length+(g.registered?1:0)});
+      toast("คัดลอก “"+(gname||"เกสต์")+"” เข้า "+(target.kind||"Home")+" ("+ref+") แล้ว ✦"); onChange();
+    }catch(e){ toast("คัดลอกไม่สำเร็จ: "+(e.message||e)); } };
   /* สร้างข้อความรายละเอียดเกสต์ แล้วคัดลอกลง Clipboard */
   const buildGuestText=()=>{ const dateTxt=day+" "+mo;
     const blocks=list.map((gg,i)=>{
@@ -1093,7 +1108,7 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
               <tbody>
                 {list.length===0
                   ? <tr><td colSpan={isCall?21:18} style={{textAlign:"center",color:"var(--muted)",padding:"22px"}}>ยังไม่มีรายชื่อแขก · กด “เพิ่มแขก” เพื่อเริ่มบันทึก</td></tr>
-                  : list.map((g,i)=><GuestRow key={g.id} g={g} idx={i} db={db} onChange={onChange} toast={toast} recount={recount} list={list} isCall={isCall} evOpts={evOpts} />)}
+                  : list.map((g,i)=><GuestRow key={g.id} g={g} idx={i} db={db} onChange={onChange} toast={toast} recount={recount} list={list} isCall={isCall} evOpts={evOpts} onCopyToEvent={copyGuestToEvent} />)}
               </tbody>
             </table>
           </div>
