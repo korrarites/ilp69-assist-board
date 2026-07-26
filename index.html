@@ -1293,7 +1293,7 @@ function HostGuestTable({mine, central, hostName, guests, db, onChange, toast, o
   /* แสดงแขก: จากอีเวนต์ของตัวเอง + แขกที่ตัวเองเป็นผู้เชิญ ในงานส่วนกลาง (Landmark) */
   const all=(guests||[]).filter(g=>{ const h=homeById[g.home_id]; if(!h) return false;
       if(ids.has(g.home_id)) return true;
-      if(isCentral(h)&&hn&&(g.inviter||"").trim().toLowerCase()===hn) return true;
+      if((isCentral(h)||(h.kind||"")==="Lead Candidate Event")&&hn&&(g.inviter||"").trim().toLowerCase()===hn) return true;
       return false; })
     .map(g=>({g,home:homeById[g.home_id]}))
     .sort((a,b)=>((b.home.event_date||"").localeCompare(a.home.event_date||""))||((a.g.created_at||"").localeCompare(b.g.created_at||"")));
@@ -1786,7 +1786,7 @@ function goalData(homes, guests, host){
   const evByCol=cols.map(()=>[]); const seen={};
   const addEv=(h,central)=>{ if(seen[h.id]) return; seen[h.id]=1; const ci=colIdx(h.event_date); if(ci<0) return; evByCol[ci].push({kind:h.kind||"Home",date:h.event_date,central}); };
   ownHomes.forEach(h=>addEv(h,false));
-  (guests||[]).forEach(g=>{ const h=homeById[g.home_id]; if(!h) return; const inv=(g.inviter||"").trim().toLowerCase(); if(inv===hn&&isCentral(h)&&nrm(h.host_name)!==key) addEv(h,true); });
+  (guests||[]).forEach(g=>{ const h=homeById[g.home_id]; if(!h) return; const inv=(g.inviter||"").trim().toLowerCase(); if(inv===hn&&(isCentral(h)||(h.kind||"")==="Lead Candidate Event")&&nrm(h.host_name)!==key) addEv(h,true); });
   evByCol.forEach(a=>a.sort((x,y)=>(x.date||"").localeCompare(y.date||"")));
   return {cols, promise, actual, eventDates, hiPromise, hiActual, evByCol};
 }
@@ -1941,7 +1941,7 @@ function HostView({homes, signups, guests, weeklies, progress, goals, db, onChan
             <button key={tt.id} className={"btn btn-sm"+(hostTab===tt.id?" btn-primary":"")} onClick={()=>setHostTab(tt.id)}>{tt.label}</button>)}
         </div>
         {hostTab==="goal" && <GoalBoard host={q} homes={homes} guests={guests} goal={(goals||[]).find(x=>nrm(x.host_name)===nrm(q))} db={db} onChange={onChange} toast={toast} />}
-        {hostTab==="guest" && <HostGuestTable mine={mine} central={homes.filter(h=>isCentral(h)&&h.host_name!==q)} hostName={q} guests={guests} db={db} onChange={onChange} toast={toast} onOpenHome={setGuestFor} />}
+        {hostTab==="guest" && <HostGuestTable mine={mine} central={homes.filter(h=>(isCentral(h)||(h.kind||"")==="Lead Candidate Event")&&h.host_name!==q)} hostName={q} guests={guests} db={db} onChange={onChange} toast={toast} onOpenHome={setGuestFor} />}
         {hostTab==="activity" && <HostActivityTable mine={mine} signups={signups} />}
         {hostTab==="reflect" && <HostReflectTable mine={mine} />}
         {hostTab==="weekly" && <>
@@ -2030,8 +2030,8 @@ function critStats(homes, hostName, guests){
   const key=nrm(hostName); const mine=homes.filter(h=>nrm(h.host_name)===key);
   const arr=mine.filter(arrived); /* นับ Guest/ลงทะเบียน/สำเร็จ เฉพาะงานที่ถึงวันแล้ว */
   const hn=(hostName||"").trim().toLowerCase();
-  /* อีเวนต์ส่วนกลาง (Landmark) ที่ตัวเองร่วม (เป็นผู้เชิญ ≥1 คน) และผ่านไปแล้ว — นับรวมในสถิติกิจกรรม */
-  const centralPart=hn?homes.filter(h=>isCentral(h)&&nrm(h.host_name)!==key&&arrived(h)&&(guests||[]).some(g=>g.home_id===h.id&&(g.inviter||"").trim().toLowerCase()===hn)):[];
+  /* อีเวนต์ที่ตัวเองร่วม (เป็นผู้เชิญ ≥1 คน) และผ่านไปแล้ว — งานส่วนกลาง (Landmark) และงาน LC ของใครก็ได้ — นับรวมในสถิติกิจกรรม */
+  const centralPart=hn?homes.filter(h=>(isCentral(h)||(h.kind||"")==="Lead Candidate Event")&&nrm(h.host_name)!==key&&arrived(h)&&(guests||[]).some(g=>g.home_id===h.id&&(g.inviter||"").trim().toLowerCase()===hn)):[];
   const cnt=k=>mine.filter(h=>(h.kind||"Home")===k).length+centralPart.filter(h=>(h.kind||"Home")===k).length;
   const sucCnt=k=>arr.filter(h=>(h.kind||"Home")===k&&isSuccessHome(h)).length;
   /* Guest / ลงทะเบียน — นับตาม "ผู้เชิญ" เป็นหลัก: ถ้าระบุผู้เชิญ → นับให้ผู้เชิญ, ถ้าไม่ระบุ → นับให้ Host (เจ้าของงาน)
