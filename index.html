@@ -628,9 +628,10 @@ const KIND_META={
   "Center Intro":{cls:"k-event",icon:I.star,seg:" ev",bg:"linear-gradient(150deg,#EDE7FB,#fff)",fg:"#5B3FAE"},
   "Evening Session":{cls:"k-es",icon:I.clock,seg:" es",bg:"linear-gradient(150deg,#E3EEF8,#fff)",fg:"#2C5A8A"},
   "Call Out":{cls:"k-call",icon:I.phone,seg:" co",bg:"linear-gradient(150deg,var(--amber-tint),#fff)",fg:"#8a5512"},
+  "Lead Candidate Event":{cls:"k-event",icon:I.trophy,seg:" ev",bg:"linear-gradient(150deg,#FBE7EF,#fff)",fg:"#A4356B"},
 };
-const KINDS=["Home","Center Intro","Evening Session","Call Out"];
-const SRC_LABEL={"Home":"HI · Home Intro","Center Intro":"CI · Center Intro","Evening Session":"ES · Evening Session","Call Out":"โทร · Call Out"};
+const KINDS=["Home","Center Intro","Evening Session","Lead Candidate Event","Call Out"];
+const SRC_LABEL={"Home":"HI · Home Intro","Center Intro":"CI · Center Intro","Evening Session":"ES · Evening Session","Lead Candidate Event":"LC · Lead Candidate","Call Out":"โทร · Call Out"};
 function KindBadge({kind}){ const k=kind||"Home"; const m=KIND_META[k]||KIND_META.Home; return <span className={"badge "+m.cls}><SVG d={m.icon} size={11}/>{k}</span>; }
 
 /* แถบข้อมูลบนการ์ด: กลุ่ม / Introduction Leader / Zoom Manager (โชว์เสมอ) */
@@ -952,7 +953,7 @@ const CO_HEAD=[{k:"co_session",label:"ครั้งที่"},{k:"co_nickname
 const CO_GOALS=[{k:"co_goal_talked",label:"คนที่ได้คุย"},{k:"co_goal_interested",label:"ผู้สนใจลงทะเบียน / ฟังการแนะนำ (P)"},{k:"co_goal_reg",label:"ลงทะเบียน"},{k:"co_goal_gst",label:"เกรส (Guest)"}];
 const CO_TEXT=[{k:"co_detail1",label:"บันทึกรายละเอียด 1"},{k:"co_detail2",label:"บันทึกรายละเอียด 2"}];
 function coActuals(list){ return { talked:list.length, interested:list.filter(g=>g.interested==="สนใจ").length, reg:list.filter(g=>g.registered).length, gst:list.filter(g=>(g.call_status==="Gst")||g.attended).length }; }
-function eventOptions(homes, hostName){ const ek=["Home","Center Intro","Evening Session"];
+function eventOptions(homes, hostName){ const ek=["Home","Center Intro","Evening Session","Lead Candidate Event"];
   return (homes||[]).filter(h=>nrm(h.host_name)===nrm(hostName) && ek.includes(h.kind||"Home")).sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")).map(h=>{ const f=fmtDate(h.event_date); const d=f.day+" "+f.mo; return {val:d, label:(h.kind||"Home")+" · "+(h.title||h.host_name)+" · "+d}; }); }
 function HField({home, field, label, db, onChange, ph}){
   const [v,setV]=useState(home[field]||""); useEffect(()=>{ setV(home[field]||""); },[home.id,home[field]]);
@@ -1043,7 +1044,7 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
   /* คัดลอกเกสต์ Call Out เข้า Home/Event ที่เลือกไว้ (event_ref) — ทีละคน */
   const copyGuestToEvent=async(g)=>{ const ref=(g.event_ref||"").trim();
     if(!ref){ toast("เกสต์นี้ยังไม่ได้เลือก Event (ช่อง “เลือกจากการ์ด”)"); return; }
-    const ek=["Home","Center Intro","Evening Session"];
+    const ek=["Home","Center Intro","Evening Session","Lead Candidate Event"];
     const targets=(homes||[]).filter(h=>nrm(h.host_name)===nrm(home.host_name)&&ek.includes(h.kind||"Home")&&((fmtDate(h.event_date).day+" "+fmtDate(h.event_date).mo)===ref));
     if(!targets.length){ toast("ไม่พบ Event ที่ตรงกับ “"+ref+"” ของ "+home.host_name); return; }
     const target=targets[0]; const gname=(g.guest_name||"").trim();
@@ -1599,7 +1600,7 @@ function progressData(homes, guests, host, ps, pe){
   const homeById={}; (homes||[]).forEach(h=>homeById[h.id]=h);
   const hostHomes=(homes||[]).filter(h=>PROG_NRM(h.host_name)===key);
   const inP=(d)=> !!d && (!ps||d>=ps) && (!pe||d<=pe);
-  const SRC={"Home":"HI","Center Intro":"CI","Evening Session":"ES","Call Out":"Per C/O"};
+  const SRC={"Home":"HI","Center Intro":"CI","Evening Session":"ES","Lead Candidate Event":"LC","Call Out":"Per C/O"};
   const isReg=(g,h)=> (h.kind||"Home")==="Call Out" ? (g.call_status==="R"||!!g.registered) : !!g.registered;
   /* ยึด "ผู้เชิญ" เป็นหลัก ถ้าไม่มีผู้เชิญ → นับให้ Host (เหมือนสถิติส่วนตัว) */
   const mineFor=(g,h)=>{ const inv=(g.inviter||"").trim().toLowerCase(); return inv ? (inv===hn) : (PROG_NRM(h.host_name)===key); };
@@ -1631,7 +1632,7 @@ function ProgressReport({rep, data, onClose}){
   const rrows=Array.from({length:Math.max(10,R.length)},(_,i)=>R[i]||null);
   const wrows=Array.from({length:5},()=>null);
   const SC=["HI","CI","Per C/O","CWC","ES (Per)","ES (Oth)"];
-  const tick=(row,c)=>{ if(!row) return ""; if(c==="HI"&&row.src==="HI")return "/"; if(c==="CI"&&row.src==="CI")return "/"; if(c==="Per C/O"&&row.src==="Per C/O")return "/"; if(c==="ES (Per)"&&row.src==="ES")return "/"; return ""; };
+  const tick=(row,c)=>{ if(!row) return ""; if(c==="HI"&&row.src==="HI")return "/"; if(c==="CI"&&(row.src==="CI"||row.src==="LC"))return "/"; if(c==="Per C/O"&&row.src==="Per C/O")return "/"; if(c==="ES (Per)"&&row.src==="ES")return "/"; return ""; };
   const fn=("progress-"+(rep.host_name||"")+"-"+(rep.period_end||"")).replace(/\s+/g,"");
   return (
     <div className="scrim" onMouseDown={ev=>ev.target===ev.currentTarget&&onClose()}>
@@ -1757,7 +1758,7 @@ function goalCols(){ const cols=[];
   pushWeeks(cols,"2026-08-10","2026-09-26");
   cols.push({label:"Weekend 4",sub:"26-27 กย",s:"2026-09-26",e:"2026-09-27",ms:true});
   return cols; }
-const KIND_SHORT={"Home":"HI","Center Intro":"CI","Evening Session":"ES","Call Out":"C/O"};
+const KIND_SHORT={"Home":"HI","Center Intro":"CI","Evening Session":"ES","Lead Candidate Event":"LC","Call Out":"C/O"};
 function dDM(s){ if(!s) return ""; const d=new Date(s+"T00:00:00"); return d.getDate()+"/"+(d.getMonth()+1); }
 function goalData(homes, guests, host){
   const key=nrm(host), hn=(host||"").trim().toLowerCase();
@@ -1768,7 +1769,7 @@ function goalData(homes, guests, host){
   const promise={intro:blank(),hi:blank(),reg:blank(),co:blank()};
   const actual={intro:blank(),hi:blank(),reg:blank(),co:blank()};
   const eventDates=new Set();
-  const rowOfGuest=(k)=> k==="Home"?"hi":((k==="Center Intro"||k==="Evening Session")?"intro":null);
+  const rowOfGuest=(k)=> k==="Home"?"hi":((k==="Center Intro"||k==="Evening Session"||k==="Lead Candidate Event")?"intro":null);
   homes.filter(h=>nrm(h.host_name)===key).forEach(h=>{ const ci=colIdx(h.event_date); const k=h.kind||"Home"; eventDates.add(h.event_date); if(ci<0) return;
     const gr=rowOfGuest(k); if(gr&&h.promise_g) promise[gr][ci]+=h.promise_g;
     if(h.promise_r){ if(k==="Call Out") promise.co[ci]+=h.promise_r; else promise.reg[ci]+=h.promise_r; } });
@@ -2049,7 +2050,7 @@ function critStats(homes, hostName, guests){
   const orgSuccess=arr.filter(h=>(h.kind||"Home")==="Home"&&isSuccessHome(h)).length;
   const c1=homeMade>=CRIT_HOME&&orgSuccess>=CRIT_HOMESUC, c2=guest>=CRIT_GUEST, c3=reg>=CRIT_REG;
   return { name:hostName, total:mine.length+centralPart.length, home:cnt("Home"), homeSuccess:sucCnt("Home"),
-    center:cnt("Center Intro"), evening:cnt("Evening Session"), call:cnt("Call Out"),
+    center:cnt("Center Intro"), evening:cnt("Evening Session"), lc:cnt("Lead Candidate Event"), call:cnt("Call Out"),
     homeMade, orgSuccess, guest, reg, c1, c2, c3, passed:(c1?1:0)+(c2?1:0)+(c3?1:0) };
 }
 function CritItem({label, icon, cur, goal, unit, met}){
@@ -2074,6 +2075,7 @@ function CriteriaPanel({s}){
         <div className="pbox"><div className="pv">{s.home}</div><div className="pl">Home · สำเร็จ {s.homeSuccess}</div></div>
         <div className="pbox"><div className="pv">{s.center}</div><div className="pl">Center Intro</div></div>
         <div className="pbox"><div className="pv">{s.evening}</div><div className="pl">Evening Session</div></div>
+        <div className="pbox"><div className="pv">{s.lc}</div><div className="pl">Lead Candidate (LC)</div></div>
         <div className="pbox"><div className="pv">{s.call}</div><div className="pl">Call Out</div></div>
         <div className="pbox"><div className="pv">{s.guest}</div><div className="pl">Guest รวม</div></div>
         <div className="pbox"><div className="pv">{s.reg}</div><div className="pl">ลงทะเบียนรวม</div></div>
@@ -2264,7 +2266,7 @@ function CriteriaView({homes, signups, guests}){
                   <span className="ava" style={{flex:"0 0 auto"}}>{initials(r.name)}</span>
                   <div style={{flex:1,minWidth:0}}>
                     <div className="lead-name">{r.name}</div>
-                    <div className="lead-sub">{r.group!=null?("กลุ่ม "+r.group+" · "):""}Home {r.home} · CI {r.center} · ES {r.evening} · Call {r.call}</div></div>
+                    <div className="lead-sub">{r.group!=null?("กลุ่ม "+r.group+" · "):""}Home {r.home} · CI {r.center} · ES {r.evening} · LC {r.lc} · Call {r.call}</div></div>
                   <span className={"cpill"+(r.c1?" ok":"")}>จัด {r.homeMade}/{CRIT_HOME}·ส{r.orgSuccess}/{CRIT_HOMESUC}</span>
                   <span className={"cpill"+(r.c2?" ok":"")}>G {r.guest}/{CRIT_GUEST}</span>
                   <span className={"cpill"+(r.c3?" ok":"")}>R {r.reg}/{CRIT_REG}</span>
