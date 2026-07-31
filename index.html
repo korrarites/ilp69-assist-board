@@ -954,7 +954,14 @@ const CO_GOALS=[{k:"co_goal_talked",label:"คนที่ได้คุย"},{
 const CO_TEXT=[{k:"co_detail1",label:"บันทึกรายละเอียด 1"},{k:"co_detail2",label:"บันทึกรายละเอียด 2"}];
 function coActuals(list){ return { talked:list.length, interested:list.filter(g=>g.interested==="สนใจ").length, reg:list.filter(g=>g.registered).length, gst:list.filter(g=>(g.call_status==="Gst")||g.attended).length }; }
 function eventOptions(homes, hostName){ const ek=["Home","Center Intro","Evening Session","Lead Candidate Event"];
-  return (homes||[]).filter(h=>nrm(h.host_name)===nrm(hostName) && ek.includes(h.kind||"Home")).sort((a,b)=>(b.event_date||"").localeCompare(a.event_date||"")).map(h=>{ const f=fmtDate(h.event_date); const d=f.day+" "+f.mo; return {val:d, label:(h.kind||"Home")+" · "+(h.title||h.host_name)+" · "+d}; }); }
+  /* เลือกได้ทุกอีเวนต์บนบอร์ด (ทุกผู้จัด) — ของตัวเองขึ้นก่อน, ของคนอื่นเก็บค่าเป็น "วันที่ · ผู้จัด" เพื่อระบุงานได้ชัด */
+  const all=(homes||[]).filter(h=>ek.includes(h.kind||"Home"));
+  const own=all.filter(h=>nrm(h.host_name)===nrm(hostName));
+  const others=all.filter(h=>nrm(h.host_name)!==nrm(hostName));
+  const sortD=(a,b)=>(b.event_date||"").localeCompare(a.event_date||"");
+  const mk=(h,isOwn)=>{ const f=fmtDate(h.event_date); const d=f.day+" "+f.mo;
+    return {val:isOwn?d:(d+" · "+h.host_name), label:(h.kind||"Home")+" · "+(h.title||h.host_name)+" · "+d+(isOwn?"":" · ผู้จัด "+h.host_name)}; };
+  return [...own.sort(sortD).map(h=>mk(h,true)), ...others.sort(sortD).map(h=>mk(h,false))]; }
 function HField({home, field, label, db, onChange, ph}){
   const [v,setV]=useState(home[field]||""); useEffect(()=>{ setV(home[field]||""); },[home.id,home[field]]);
   const blur=async()=>{ if((v||"")!==(home[field]||"")){ try{ await db.updateHome(home.id,{[field]:v.trim()||null}); onChange(); }catch(e){} } };
@@ -1045,8 +1052,11 @@ function GuestModal({home, guests, homes, db, onChange, toast, onClose}){
   const copyGuestToEvent=async(g)=>{ const ref=(g.event_ref||"").trim();
     if(!ref){ toast("เกสต์นี้ยังไม่ได้เลือก Event (ช่อง “เลือกจากการ์ด”)"); return; }
     const ek=["Home","Center Intro","Evening Session","Lead Candidate Event"];
-    const targets=(homes||[]).filter(h=>nrm(h.host_name)===nrm(home.host_name)&&ek.includes(h.kind||"Home")&&((fmtDate(h.event_date).day+" "+fmtDate(h.event_date).mo)===ref));
-    if(!targets.length){ toast("ไม่พบ Event ที่ตรงกับ “"+ref+"” ของ "+home.host_name); return; }
+    /* ref อาจเป็น "วันที่" (งานของ Host เอง) หรือ "วันที่ · ผู้จัด" (งานของคนอื่นบนบอร์ด) */
+    let dateRef=ref, hostRef=home.host_name;
+    if(ref.indexOf(" · ")>=0){ const parts=ref.split(" · "); dateRef=parts[0].trim(); hostRef=parts.slice(1).join(" · ").trim(); }
+    const targets=(homes||[]).filter(h=>nrm(h.host_name)===nrm(hostRef)&&ek.includes(h.kind||"Home")&&((fmtDate(h.event_date).day+" "+fmtDate(h.event_date).mo)===dateRef));
+    if(!targets.length){ toast("ไม่พบ Event ที่ตรงกับ “"+ref+"”"); return; }
     const target=targets[0]; const gname=(g.guest_name||"").trim();
     const dup=(guests||[]).some(x=>x.home_id===target.id && (x.guest_name||"").trim()===gname && gname!=="");
     if(dup){ toast("มี “"+gname+"” ใน "+(target.kind||"Home")+" ("+ref+") อยู่แล้ว"); return; }
