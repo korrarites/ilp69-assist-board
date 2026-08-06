@@ -1915,6 +1915,75 @@ function GoalBoard({host, homes, guests, goal, db, onChange, toast}){
     </div>
   );
 }
+/* ===== สรุปสถิติรายคน (ข้อความพร้อมคัดลอก) ===== */
+function buildPersonalStatText(homes, guests, progress, host){
+  const key=nrm(host); const hn=(host||"").trim().toLowerCase();
+  const homeById={}; (homes||[]).forEach(h=>homeById[h.id]=h);
+  const bd=(s)=>{ if(!s) return ""; const d=new Date(s+"T00:00:00"); return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+String((d.getFullYear()+543)%100).padStart(2,"0"); };
+  const dm=(s)=>{ if(!s) return ""; const d=new Date(s+"T00:00:00"); return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0"); };
+  const p=(progress||[]).filter(x=>nrm(x.host_name)===key).sort((a,b)=>((b.created_at||"")+"").localeCompare((a.created_at||"")+""))[0]||{};
+  const cs=critStats(homes, host, guests);
+  const mineFor=(g,h)=>{ const inv=(g.inviter||"").trim().toLowerCase(); return inv?(inv===hn):(nrm(h.host_name)===key); };
+  const myRegs=(guests||[]).filter(g=>{ const h=homeById[g.home_id]; return h&&arrived(h)&&g.registered&&mineFor(g,h); })
+    .sort((a,b)=>((homeById[a.home_id].event_date||"")).localeCompare(homeById[b.home_id].event_date||""));
+  const regBy=(k)=>myRegs.filter(g=>(homeById[g.home_id].kind||"Home")===k).length;
+  const S={"Home":"HI","Center Intro":"CI","Evening Session":"ES","Lead Candidate Event":"LC","Call Out":"CO"};
+  const his=(homes||[]).filter(h=>nrm(h.host_name)===key&&(h.kind||"Home")==="Home"&&arrived(h)).sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||""));
+  const hiRows=his.map(h=>{ const G=(guests||[]).filter(g=>g.home_id===h.id&&g.attended).length; const R=(guests||[]).filter(g=>g.home_id===h.id&&g.registered).length; return {d:h.event_date,G,R,born:G>=MIN_GUEST,eff:G>=MIN_GUEST&&R*4>=G}; });
+  const born=hiRows.filter(x=>x.born).length, eff=hiRows.filter(x=>x.eff).length;
+  const partOf=(k)=>{ const own=(homes||[]).filter(h=>nrm(h.host_name)===key&&(h.kind||"Home")===k&&arrived(h));
+    const inv=(homes||[]).filter(h=>nrm(h.host_name)!==key&&(h.kind||"Home")===k&&arrived(h)&&(guests||[]).some(g=>g.home_id===h.id&&(g.inviter||"").trim().toLowerCase()===hn));
+    return [...own,...inv].sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||"")); };
+  const evLine=(k)=>{ const l=partOf(k); return l.length?(l.length+" ("+l.map(h=>dm(h.event_date)).join(", ")+")"):"0"; };
+  const cos=(homes||[]).filter(h=>nrm(h.host_name)===key&&h.kind==="Call Out"&&arrived(h)).sort((a,b)=>(a.event_date||"").localeCompare(b.event_date||""));
+  const last=cos[cos.length-1];
+  const L=[];
+  L.push("Name: "+(p.name||host));
+  L.push("Nickname: "+(p.nickname||""));
+  L.push("NO: "+(p.no_id||"-")+" · รุ่น "+(p.cohort||"69"));
+  L.push("Coach Staff: "+(p.staff_coach||""));
+  L.push("Coach IL: "+(p.il_coach||""));
+  L.push("");
+  L.push("*Agreement");
+  L.push("1. Guest ขั้นต่ำ "+CRIT_GUEST+"G / ได้ "+cs.guest+"G"+(cs.guest>=CRIT_GUEST?" ✅":""));
+  L.push("2. Register ขั้นต่ำ "+CRIT_REG+"R / ได้ "+cs.reg+"R"+(cs.reg>=CRIT_REG?" ✅":""));
+  L.push("");
+  L.push("2.1 Call out = "+regBy("Call Out"));
+  L.push("2.2 Home (HI) = "+regBy("Home"));
+  L.push("2.3 Event (ES) = "+regBy("Evening Session"));
+  L.push("2.4 CI = "+regBy("Center Intro"));
+  L.push("2.5 LC = "+regBy("Lead Candidate Event"));
+  L.push("2.6 SI = 0");
+  L.push("2.7 Teen = 0");
+  L.push("");
+  L.push("HI : จัด "+hiRows.length+" ครั้ง · เกิด (≥"+MIN_GUEST+"G) "+born+" ครั้ง · Eff (≥"+MIN_GUEST+"G และ R≥25%) "+eff+" ครั้ง");
+  hiRows.forEach((x,i)=>L.push((i+1)+" : "+bd(x.d)+"  "+x.G+"G/"+x.R+"R"+(x.eff?" ✅ Eff":(x.born?" (เกิด)":""))));
+  L.push("");
+  L.push("กิจกรรมที่ร่วม (เป็นผู้จัด/ผู้เชิญ)");
+  L.push("CI = "+evLine("Center Intro"));
+  L.push("ES = "+evLine("Evening Session"));
+  L.push("LC = "+evLine("Lead Candidate Event"));
+  L.push("");
+  L.push("Assist "+cos.length+"/26"+(last?(" · ล่าสุด"+(last.co_session?" #"+last.co_session:"")+" "+bd(last.event_date)):""));
+  if(cos.length) L.push("("+cos.map(h=>dm(h.event_date)+(h.co_session?" #"+h.co_session:"")).join(" · ")+")");
+  L.push("");
+  L.push("ชื่อคนลงทะเบียน ("+myRegs.length+")");
+  myRegs.forEach((g,i)=>{ const h=homeById[g.home_id]; L.push((i+1)+". "+(g.guest_name||g.nickname||"-")+" "+(S[h.kind||"Home"]||"")+" "+bd(h.event_date)); });
+  return L.join("\n");
+}
+function StatSummaryPanel({homes, guests, progress, host, toast}){
+  const txt=buildPersonalStatText(homes, guests, progress, host);
+  const copy=async()=>{ try{ await navigator.clipboard.writeText(txt); toast("คัดลอกสถิติแล้ว ✦ นำไปวางต่อได้เลย"); }catch(e){ try{ window.prompt("คัดลอกข้อความนี้:", txt); }catch(_){ toast("คัดลอกไม่สำเร็จ"); } } };
+  return (
+    <div className="panel">
+      <h3 style={{display:"flex",alignItems:"center",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
+        <span style={{display:"flex",alignItems:"center",gap:8}}><SVG d={I.chart||I.trophy} size={18}/>สรุปสถิติ — {host}</span>
+        <button className="btn btn-primary btn-sm" onClick={copy}><SVG d={I.share} size={14}/>คัดลอกสถิติ</button></h3>
+      <p className="lead">อัปเดตสดจากข้อมูลในระบบ (นับตามกติกา: ยึดผู้เชิญ · เฉพาะงานที่เกิดแล้ว) · กดปุ่มเพื่อคัดลอกทั้งข้อความ</p>
+      <pre style={{whiteSpace:"pre-wrap",fontFamily:"inherit",background:"var(--paper,#f7f9f7)",border:"1px solid var(--line)",borderRadius:12,padding:"14px 18px",fontSize:13.5,lineHeight:1.7,margin:0}}>{txt}</pre>
+    </div>
+  );
+}
 function HostView({homes, signups, guests, weeklies, progress, goals, db, onChange, toast, onCreate}){
   const [q,setQ]=useState(""); const [completeFor,setCompleteFor]=useState(null); const [guestFor,setGuestFor]=useState(null); const [editFor,setEditFor]=useState(null); const [weeklyEditId,setWeeklyEditId]=useState(null); const [progressEditId,setProgressEditId]=useState(null); const [hostTab,setHostTab]=useState("goal"); const [cardKind,setCardKind]=useState("");
   const myWeeklies=q?(weeklies||[]).filter(w=>nrm(w.host_name)===nrm(q)):[];
@@ -1947,10 +2016,11 @@ function HostView({homes, signups, guests, weeklies, progress, goals, db, onChan
       {q && mine.length>0 && <div style={{marginTop:16}}><CriteriaPanel s={critStats(homes, q, guests)} /></div>}
       {q && <div style={{marginTop:16}}>
         <div className="panel" style={{padding:"8px 10px",marginBottom:16,display:"flex",gap:6,flexWrap:"wrap"}}>
-          {[{id:"goal",label:"🎯 ตั้งเป้าหมาย"},{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"},{id:"progress",label:"รายงานผลลัพธ์"}].map(tt=>
+          {[{id:"goal",label:"🎯 ตั้งเป้าหมาย"},{id:"stat",label:"📋 สถิติ"},{id:"guest",label:"สรุปแขก"},{id:"activity",label:"สรุปกิจกรรม"},{id:"reflect",label:"สิ่งที่ได้จากการจัด Home"},{id:"weekly",label:"ทบทวนประจำสัปดาห์"},{id:"progress",label:"รายงานผลลัพธ์"}].map(tt=>
             <button key={tt.id} className={"btn btn-sm"+(hostTab===tt.id?" btn-primary":"")} onClick={()=>setHostTab(tt.id)}>{tt.label}</button>)}
         </div>
         {hostTab==="goal" && <GoalBoard host={q} homes={homes} guests={guests} goal={(goals||[]).find(x=>nrm(x.host_name)===nrm(q))} db={db} onChange={onChange} toast={toast} />}
+        {hostTab==="stat" && <StatSummaryPanel homes={homes} guests={guests} progress={progress} host={q} toast={toast} />}
         {hostTab==="guest" && <HostGuestTable mine={mine} central={homes.filter(h=>(isCentral(h)||(h.kind||"")==="Lead Candidate Event")&&h.host_name!==q)} hostName={q} guests={guests} db={db} onChange={onChange} toast={toast} onOpenHome={setGuestFor} />}
         {hostTab==="activity" && <HostActivityTable mine={mine} signups={signups} />}
         {hostTab==="reflect" && <HostReflectTable mine={mine} />}
